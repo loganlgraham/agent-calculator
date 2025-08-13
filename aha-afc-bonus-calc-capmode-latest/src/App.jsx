@@ -4,16 +4,7 @@ import { allocation, programCapPct } from "./lib/calc";
 export default function App(){
   const [dark, setDark] = useState(false);
   useEffect(()=>{ const r=document.documentElement;
-  // Auto-calc Seller Credits to zero Agent (keeps Seller Credits synced)
-  // Runs whenever the needed additional credits changes.
-  useEffect(()=>{
-    if (autoSellerCredits){
-      const needed = Math.max(0, Number(data.additionalCreditsToZeroAgent||0));
-      const formatted = Number(needed).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0});
-      setSellerCreditsInput(formatted);
-    }
-  }, [autoSellerCredits, data.additionalCreditsToZeroAgent]);
- dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
+dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   // Inputs
   const [homePriceInput, setHomePriceInput] = useState("$400,000");
@@ -186,16 +177,7 @@ export default function App(){
       ruleLabel: programCap.ruleLabel,
     };
   },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
-
-
-  // Keep the Cash to Close input auto-populated when Auto CTC is ON
-  useEffect(()=>{
-    if (autoEstimateCTC) {
-      const val = Number(data.ctcNet || 0);
-      setCashToCloseInput(val.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
-    }
-  }, [autoEstimateCTC, data.ctcNet]);
-  const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
+const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
     const v=(e.target.value||'').replace(/[^0-9.]/g,'');
@@ -349,7 +331,7 @@ export default function App(){
                   <span>Auto-calc Cash to Close</span>
                 </label>
               </div>
-              <input type="text" inputMode="numeric" value={cashToCloseInput} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
+              <input type="text" inputMode="numeric" value={(autoEstimateCTC ? Number(data.ctcNet||0).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0}) : cashToCloseInput)} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
               <div className="small">
                 Auto ON: uses computed Net CTC (includes DPA and credits); cap uses original CTC.
                 Auto OFF: your Cash to Close overrides the cap.
