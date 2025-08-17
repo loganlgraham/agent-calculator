@@ -138,11 +138,6 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: preCredits });
     const { grossCommission, agentShare, ahaShare, allocatedAfc, allocatedAha, allocatedAgent, allowed, afcPlanned, ahaPlanned, agentPlanned } = alloc;
 
-    // Additional credits needed (seller/other/DPA toward cap) so agent allocation becomes $0
-    // Threshold: remainingNeed <= (afcPlanned + ahaPlanned)
-    // remainingNeed = capUsed - preCredits
-    const additionalCreditsToZeroAgent = Math.max(0, (Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0)) - (Number(preCredits)||0));
-
     // Credits needed (seller/other/DPA toward cap) to reduce Agent contribution to $0:
     // When remainingNeed <= afcPlanned + ahaPlanned, agent allocation falls to zero.
     const creditsToZeroAgent = Math.max(0, (Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0)));
@@ -176,7 +171,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       dpaMinBorrower: dpa.minBorrower,
       ruleLabel: programCap.ruleLabel,
     };
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
