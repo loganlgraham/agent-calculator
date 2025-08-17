@@ -192,6 +192,22 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
   useEffect(()=>{
+    if(autoSellerCredits){
+      const other = Math.max(0, toNumber(otherCreditsInput));
+      const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
+      const baseCtc = data.ctcNet + data.seller + other;
+      const planned = data.price * 0.0075;
+      let needed = programCap.amount - planned - other - dpaCreds;
+      if(!(programCap.amount <= baseCtc - needed - other)){
+        needed = (baseCtc - 2*other - dpaCreds - planned)/2;
+      }
+      needed = Math.max(0, needed);
+      const formatted = toCurrency(needed);
+      if(sellerCreditsInput!==formatted) setSellerCreditsInput(formatted);
+    }
+  },[autoSellerCredits, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.ctcNet, data.seller, data.price, programCap.amount, sellerCreditsInput]);
+
+  useEffect(()=>{
     if(autoEstimateCTC){
       const formatted = toCurrency(data.ctcNet);
       if(cashToCloseInput!==formatted) setCashToCloseInput(formatted);
