@@ -10,7 +10,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [homePriceInput, setHomePriceInput] = useState("$400,000");
   const [commissionPctInput, setCommissionPctInput] = useState("2.5");
   const [sellerCreditsInput, setSellerCreditsInput] = useState("$0");
-  const [autoSellerCredits, setAutoSellerCredits] = useState(true);
+  const [autoSellerCredits, setAutoSellerCredits] = useState(false);
   const [otherCreditsInput, setOtherCreditsInput] = useState("$0");
   const [cashToCloseInput, setCashToCloseInput] = useState("$0");
 
@@ -34,7 +34,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [closingCostPadPctInput, setClosingCostPadPctInput] = useState("3");
 
   // Auto cash to close
-  const [autoEstimateCTC, setAutoEstimateCTC] = useState(true);
+  const [autoEstimateCTC, setAutoEstimateCTC] = useState(false);
 
   // DPA
   const [dpaProgram, setDpaProgram] = useState("None"); // None | CHFA | Essex | Custom
