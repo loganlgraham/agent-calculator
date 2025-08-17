@@ -326,7 +326,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
               <span>Auto-calc Seller Credits to zero Agent</span>
             </label>
           </div>
-          <input type="text" inputMode="numeric" value={sellerCreditsInput} readOnly={autoSellerCredits} onChange={e=>{
+          <input type="text" inputMode="numeric" value={sellerCreditsInput} onChange={e=>{
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setAutoSellerCredits(false);
             setSellerCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
@@ -361,7 +361,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
 
           <div style={{height:12}} />
           <label>Cash to Close</label>
-          <input type="text" inputMode="numeric" value={cashToCloseInput} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
+          <input type="text" inputMode="numeric" value={cashToCloseInput} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
           <div className="small">
             Auto ON: field auto-populates from CTC after DPA (before seller/other credits).
             Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
