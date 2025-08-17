@@ -29,8 +29,9 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [downAmtInput, setDownAmtInput] = useState("");
   const [dpLastEdited, setDpLastEdited] = useState("percent"); // 'percent' | 'dollars'
 
-  // Closing cost %
+  // Closing cost % and padding
   const [closingCostPctInput, setClosingCostPctInput] = useState("3");
+  const [closingCostPadPctInput, setClosingCostPadPctInput] = useState("3");
 
   // Auto cash to close
   const [autoEstimateCTC, setAutoEstimateCTC] = useState(true);
@@ -42,7 +43,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [dpaMaxPctInput, setDpaMaxPctInput] = useState("4"); // CHFA 4%, Essex 5%
   const [dpaMinBorrowerInput, setDpaMinBorrowerInput] = useState("$1,000"); // CHFA $1k, Essex $0
   const [dpaAllowCC, setDpaAllowCC] = useState(true);
-  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(false);
+  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(true);
 
   useEffect(()=>{
     if(dpaProgram==="CHFA"){ setDpaMaxPctInput("4"); setDpaMinBorrowerInput("$1,000"); if(dpaMode==="percent" && (!dpaAmountInput||dpaAmountInput==="0")) setDpaAmountInput("3"); }
@@ -124,29 +125,34 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ? toNumber(downAmtInput)
       : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
     const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
+    const ccPadPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
+    const paddedCC = baseCC * (1 + ccPadPct);
 
-    const dpa = computeDPA({ downPayment: baseDown, closingCosts: baseCC });
+    const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
     const remainingDown = Math.max(0, baseDown - dpa.dpaToDown);
-    let remainingCC = Math.max(0, baseCC - dpa.dpaToCC);
+    const preCreditCC = Math.max(0, paddedCC - dpa.dpaToCC);
 
     const seller = Math.max(0, toNumber(sellerCreditsInput));
     const other = Math.max(0, toNumber(otherCreditsInput));
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
 
-    // Cash to close after DPA but before seller/other credits
-    const ctcAfterDpa = Math.max(0, remainingDown + Math.max(0, baseCC - dpa.dpaToCC) - (includeEarnestInCTC ? earnest : 0));
+    const minGap = Math.max(0, dpa.minBorrower - (remainingDown + preCreditCC));
+    const preCreditCTC = remainingDown + preCreditCC + minGap;
+    const ctcAfterDpa = Math.max(0, preCreditCTC - (includeEarnestInCTC ? earnest : 0));
 
-    // Apply credits to get net cash to close
-    remainingCC = Math.max(0, Math.max(0, baseCC - dpa.dpaToCC) - seller - other);
-    const ctcNet = Math.max(0, remainingDown + remainingCC - (includeEarnestInCTC ? earnest : 0));
-    const ctcBase = Math.max(0, baseDown + baseCC);
+    let remainingCC = Math.max(0, preCreditCC - seller - other);
+    const netBeforeEarnest = remainingDown + remainingCC + minGap;
+    const ctcNetCalc = Math.max(0, netBeforeEarnest - (includeEarnestInCTC ? earnest : 0));
+    const ctcNet = Math.max(dpa.minBorrower, ctcNetCalc);
+    const ctcBase = Math.max(0, baseDown + paddedCC);
+    const displayCC = paddedCC + minGap;
 
     const ctcManual = Math.max(0, toNumber(cashToCloseInput));
     const baseCap = Math.max(0, programCap.amount);
 
     // Cap uses the lesser of the Program Cap and Cash to Close.
-    const cashToClose = autoEstimateCTC ? ctcAfterDpa : ctcManual;
+    const cashToClose = autoEstimateCTC ? ctcNet : ctcManual;
 
     const preCredits = (seller + other) + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0);
 
@@ -180,7 +186,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
       creditsToZeroAgent,
       downPayment: baseDown,
-      closingCosts: baseCC,
+      closingCosts: displayCC,
       seller, other,
       dpaProgram, dpaMode,
       dpaToDown: dpa.dpaToDown, dpaToCC: dpa.dpaToCC, dpaUnused: dpa.dpaUnused,
@@ -191,7 +197,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ctcNet,
       ctcBase,
     };
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
   useEffect(()=>{
     if(autoSellerCredits){
@@ -205,10 +211,10 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   useEffect(()=>{
     if(autoEstimateCTC){
-      const formatted = toCurrency(data.ctcAfterDpa);
+      const formatted = toCurrency(data.ctcNet);
       if(cashToCloseInput!==formatted) setCashToCloseInput(formatted);
     }
-  },[autoEstimateCTC, data.ctcAfterDpa, cashToCloseInput]);
+  },[autoEstimateCTC, data.ctcNet, cashToCloseInput]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
@@ -340,6 +346,11 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
           }} onKeyDown={blurOnEnter} />
 
           <div style={{height:12}} />
+          <label>Closing Cost Padding (%)</label>
+          <input type="text" inputMode="decimal" value={closingCostPadPctInput} onChange={e=>setClosingCostPadPctInput(e.target.value)} onKeyDown={blurOnEnter} />
+          <div className="small">Adds extra % buffer to closing costs.</div>
+
+          <div style={{height:12}} />
           <div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
             <label className="row">
               <input type="checkbox" checked={autoEstimateCTC} onChange={e=>setAutoEstimateCTC(e.target.checked)} />
@@ -363,7 +374,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
           <label>Cash to Close</label>
           <input type="text" inputMode="numeric" value={cashToCloseInput} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
           <div className="small">
-            Auto ON: field auto-populates from CTC after DPA (before seller/other credits).
+            Auto ON: field auto-populates from net CTC after DPA and all credits.
             Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
           </div>
         </div>
