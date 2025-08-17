@@ -155,14 +155,14 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     // Cap uses the lesser of the Program Cap and Cash to Close.
     const cashToClose = autoEstimateCTC ? ctcNet : ctcManual;
 
-    const preCredits = (seller + other) + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0);
+    const preCredits = seller + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0);
 
     const capUsed = Math.min(baseCap, cashToClose);
 
     const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: preCredits });
     const { grossCommission, agentShare, ahaShare, allocatedAfc, allocatedAha, allocatedAgent, allowed, afcPlanned, ahaPlanned, agentPlanned } = alloc;
 
-    // Credits needed (seller/other/DPA toward cap) to reduce Agent contribution to $0:
+    // Credits needed (seller/DPA toward cap) to reduce Agent contribution to $0:
     // When remainingNeed <= afcPlanned + ahaPlanned, agent allocation falls to zero.
     // Round needed credits to whole dollars to prevent oscillation
     const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0))));
@@ -213,11 +213,11 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     if(autoEstimateCTC){
       const preNet = data.ctcAfterDpa;
       const Cprime = Math.max(0, preNet - other);
-      const maxSeller = Math.max(0, Cprime - minBorrower);
+      const maxSeller = Math.max(0, preNet - minBorrower);
 
-      let sellerNeeded = Math.max(0, baseCap - planned - other - dpaCreds);
-      if(sellerNeeded > Cprime - baseCap){
-        sellerNeeded = Math.max(0, (Cprime - planned - other - dpaCreds) / 2);
+      let sellerNeeded = Math.max(0, baseCap - planned - dpaCreds);
+      if(sellerNeeded > preNet - baseCap){
+        sellerNeeded = Math.max(0, (preNet - planned - dpaCreds) / 2);
       }
       sellerNeeded = Math.min(maxSeller, Math.round(sellerNeeded));
 
@@ -236,8 +236,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     } else if(autoSellerCredits){
       const cashManual = Math.max(0, toNumber(cashToCloseInput));
       const capUsed = Math.min(baseCap, cashManual);
-      const totalOther = other + dpaCreds;
-      const needed = Math.max(0, Math.round(capUsed - planned - totalOther));
+      const needed = Math.max(0, Math.round(capUsed - planned - dpaCreds));
       const maxSeller = Math.max(0, cashManual - minBorrower);
       const sellerNeeded = Math.min(maxSeller, needed);
       if(toNumber(sellerCreditsInput) !== sellerNeeded){
