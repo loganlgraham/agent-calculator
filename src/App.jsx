@@ -144,7 +144,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     let remainingCC = Math.max(0, preCreditCC - seller - other);
     const netBeforeEarnest = remainingDown + remainingCC + minGap;
     const ctcNetCalc = Math.max(0, netBeforeEarnest - (includeEarnestInCTC ? earnest : 0));
-    const ctcNet = Math.max(dpa.minBorrower, ctcNetCalc);
+    // Round cash-to-close to whole dollars for stability
+    const ctcNet = Math.round(Math.max(dpa.minBorrower, ctcNetCalc));
     const ctcBase = Math.max(0, baseDown + paddedCC);
     const displayCC = paddedCC + minGap;
 
@@ -163,7 +164,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
     // Credits needed (seller/other/DPA toward cap) to reduce Agent contribution to $0:
     // When remainingNeed <= afcPlanned + ahaPlanned, agent allocation falls to zero.
-    const creditsToZeroAgent = Math.max(0, (Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0)));
+    // Round needed credits to whole dollars to prevent oscillation
+    const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0))));
 
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
@@ -203,16 +205,19 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     if(autoSellerCredits){
       const other = Math.max(0, toNumber(otherCreditsInput));
       const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
-      const needed = Math.max(0, data.creditsToZeroAgent - other - dpaCreds);
-      const formatted = toCurrency(needed);
-      if(sellerCreditsInput!==formatted) setSellerCreditsInput(formatted);
+      const needed = Math.max(0, Math.round(data.creditsToZeroAgent - other - dpaCreds));
+      if(toNumber(sellerCreditsInput) !== needed){
+        setSellerCreditsInput(toCurrency(needed));
+      }
     }
   },[autoSellerCredits, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.creditsToZeroAgent, sellerCreditsInput]);
 
   useEffect(()=>{
     if(autoEstimateCTC){
-      const formatted = toCurrency(data.ctcNet);
-      if(cashToCloseInput!==formatted) setCashToCloseInput(formatted);
+      const needed = Math.max(0, Math.round(data.ctcNet));
+      if(toNumber(cashToCloseInput) !== needed){
+        setCashToCloseInput(toCurrency(needed));
+      }
     }
   },[autoEstimateCTC, data.ctcNet, cashToCloseInput]);
 
