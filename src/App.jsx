@@ -173,53 +173,81 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const onePct = price * 0.01 || 1;
     const bonusProgress = Math.max(0, Math.min(1, allowed / onePct));
 
-    return {
-      price,
-      commissionPct: Math.max(0, Number(digitsOnly(commissionPctInput)||"0")),
-      grossCommission, agentShare, ahaShare,
-      allocatedAfc, allocatedAha, allocatedAgent,
-      afcAllocPct: price? allocatedAfc/price : 0,
-      ahaAllocPct: price? allocatedAha/price : 0,
-      agentAllocPct: price? allocatedAgent/price : 0,
-      agentNet, ahaNet,
-      allowedBonusTotal: allowed, capUsed,
-      earnest, includeEarnestInCTC, dpaCountsTowardCap,
-      buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
+      return {
+        price,
+        commissionPct: Math.max(0, Number(digitsOnly(commissionPctInput)||"0")),
+        grossCommission, agentShare, ahaShare,
+        allocatedAfc, allocatedAha, allocatedAgent,
+        afcAllocPct: price? allocatedAfc/price : 0,
+        ahaAllocPct: price? allocatedAha/price : 0,
+        agentAllocPct: price? allocatedAgent/price : 0,
+        agentNet, ahaNet,
+        afcPlanned, ahaPlanned, agentPlanned,
+        allowedBonusTotal: allowed, capUsed,
+        earnest, includeEarnestInCTC, dpaCountsTowardCap,
+        buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
 
-      creditsToZeroAgent,
-      downPayment: baseDown,
-      closingCosts: displayCC,
-      seller, other,
-      dpaProgram, dpaMode,
-      dpaToDown: dpa.dpaToDown, dpaToCC: dpa.dpaToCC, dpaUnused: dpa.dpaUnused,
-      dpaRequested: dpa.dpaRequested, dpaMaxByProgram: dpa.dpaMaxByProgram,
-      dpaMinBorrower: dpa.minBorrower,
-      ruleLabel: programCap.ruleLabel,
-      ctcAfterDpa,
-      ctcNet,
-      ctcBase,
-    };
-    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+        creditsToZeroAgent,
+        downPayment: baseDown,
+        closingCosts: displayCC,
+        seller, other,
+        dpaProgram, dpaMode,
+        dpaToDown: dpa.dpaToDown, dpaToCC: dpa.dpaToCC, dpaUnused: dpa.dpaUnused,
+        dpaRequested: dpa.dpaRequested, dpaMaxByProgram: dpa.dpaMaxByProgram,
+        dpaMinBorrower: dpa.minBorrower,
+        ruleLabel: programCap.ruleLabel,
+        ctcAfterDpa,
+        ctcNet,
+        ctcBase,
+      };
+      },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
   useEffect(()=>{
-    if(autoSellerCredits){
-      const other = Math.max(0, toNumber(otherCreditsInput));
-      const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
-      const needed = Math.max(0, Math.round(data.creditsToZeroAgent - other - dpaCreds));
+    if(!autoSellerCredits && !autoEstimateCTC) return;
+    const other = Math.max(0, toNumber(otherCreditsInput));
+    const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
+    const totalOther = other + dpaCreds;
+    const baseCap = Math.max(0, programCap.amount);
+    const minBorrower = data.dpaMinBorrower || 0;
+    const preNet = data.ctcAfterDpa;
+    const planned = (data.afcPlanned||0) + (data.ahaPlanned||0);
+
+    if(autoEstimateCTC){
+      const Cprime = preNet - other;
+      const sellerInputNum = Math.max(0, toNumber(sellerCreditsInput));
+      let sellerCalc = sellerInputNum;
+      if(autoSellerCredits){
+        const maxSeller = Math.max(0, Cprime - minBorrower);
+        const deficit = baseCap - planned - totalOther;
+        if(deficit <= 0){
+          sellerCalc = 0;
+        } else if(baseCap >= minBorrower && (Cprime + planned + totalOther) >= 2*baseCap){
+          sellerCalc = Math.min(maxSeller, deficit);
+        } else if((Cprime + planned + totalOther) <= 2*minBorrower){
+          sellerCalc = Math.max(0, Math.min(maxSeller, minBorrower - planned - totalOther));
+        } else {
+          sellerCalc = Math.max(0, Math.min(maxSeller, (Cprime - planned - totalOther)/2));
+        }
+        sellerCalc = Math.round(sellerCalc);
+      }
+      const sellerUsed = autoSellerCredits ? sellerCalc : sellerInputNum;
+      const cashNet = Math.max(minBorrower, Cprime - sellerUsed);
+      const ctcNeeded = Math.round(cashNet);
+      if(autoSellerCredits && sellerUsed !== sellerInputNum){
+        setSellerCreditsInput(toCurrency(sellerUsed));
+      }
+      if(toNumber(cashToCloseInput) !== ctcNeeded){
+        setCashToCloseInput(toCurrency(ctcNeeded));
+      }
+    } else if(autoSellerCredits){
+      const cashManual = Math.max(0, toNumber(cashToCloseInput));
+      const capUsed = Math.min(baseCap, cashManual);
+      const needed = Math.max(0, Math.round(capUsed - planned - totalOther));
       if(toNumber(sellerCreditsInput) !== needed){
         setSellerCreditsInput(toCurrency(needed));
       }
     }
-  },[autoSellerCredits, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.creditsToZeroAgent, sellerCreditsInput]);
-
-  useEffect(()=>{
-    if(autoEstimateCTC){
-      const needed = Math.max(0, Math.round(data.ctcNet));
-      if(toNumber(cashToCloseInput) !== needed){
-        setCashToCloseInput(toCurrency(needed));
-      }
-    }
-  },[autoEstimateCTC, data.ctcNet, cashToCloseInput]);
+  },[autoSellerCredits, autoEstimateCTC, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.dpaMinBorrower, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, sellerCreditsInput, cashToCloseInput]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
