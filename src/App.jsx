@@ -58,9 +58,22 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   const digitsOnly = (s) => (s||"").replace(/[^0-9.]/g,"");
   const toNumber = (v) => { if(v===""||v==null) return 0; const n=Number(digitsOnly(v)); return Number.isFinite(n)? n : 0; };
-  const toCurrency = (n) => Number(n).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0});
-  const fmt = (n) => Number(n).toLocaleString(undefined,{maximumFractionDigits:2,minimumFractionDigits:2});
-  const pct = (n) => (n*100).toFixed(2)+"%";
+  const toCurrency = (n) => {
+    const num = Number(n);
+    return Number.isFinite(num)
+      ? num.toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})
+      : "$0";
+  };
+  const fmt = (n) => {
+    const num = Number(n);
+    return Number.isFinite(num)
+      ? num.toLocaleString(undefined,{maximumFractionDigits:2,minimumFractionDigits:2})
+      : "0.00";
+  };
+  const pct = (n) => {
+    const num = Number(n);
+    return Number.isFinite(num) ? (num*100).toFixed(2)+"%" : "0.00%";
+  };
   const blurOnEnter = (e)=>{ if(e.key==='Enter') e.currentTarget.blur(); };
 
   const priceNum = useMemo(()=>toNumber(homePriceInput),[homePriceInput]);
@@ -290,10 +303,6 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
                 }} onKeyDown={blurOnEnter} />
                 <div className="small">Defaults: CHFA $1,000; Essex $0 (editable).</div>
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                <label className="row"><input type="checkbox" checked={dpaAllowCC} onChange={e=>setDpaAllowCC(e.target.checked)} /> <span style={{marginLeft:8}}>Allow leftover to Closing Costs</span></label>
-                <label className="row"><input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} /> <span style={{marginLeft:8}}>Count DPA toward Program Cap (rare)</span></label>
-              </div>
             </div>
           </div>
 
@@ -317,38 +326,33 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setOtherCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
           }} onKeyDown={blurOnEnter} />
-<div style={{height:12}} />
-<div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
-  <label className="row">
-    <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
-    <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
-  </label>
-  <label className="row">
-    <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
-    <span style={{marginLeft:6}}>Count DPA toward Cap</span>
-  </label>
-</div>
 
-<div style={{height:12}} />
-<div className="row" style={{gap:8, alignItems:'center', flexWrap:'wrap'}}>
-  <div style={{flex:1}}>
-    <div className="row" style={{justifyContent:'space-between', alignItems:'center'}}>
-                <label>Cash to Close</label>
-                <label className="row" style={{gap:6}}>
-                  <input type="checkbox" checked={autoEstimateCTC} onChange={e=>setAutoEstimateCTC(e.target.checked)} />
-                  <span>Auto-calc Cash to Close</span>
-                </label>
-              </div>
-              <input type="text" inputMode="numeric" value={cashToCloseInput} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
-              <div className="small">
-                Auto ON: field auto-populates from Net CTC (includes DPA and credits).
-                Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
-              </div>
-            </div>
-            <label className="row card" style={{padding:'8px 10px', borderRadius:12}}>
+          <div style={{height:12}} />
+          <div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
+            <label className="row">
               <input type="checkbox" checked={autoEstimateCTC} onChange={e=>setAutoEstimateCTC(e.target.checked)} />
-              <span style={{marginLeft:8}}>Auto</span>
+              <span style={{marginLeft:6}}>Auto-calc Cash to Close</span>
             </label>
+            <label className="row">
+              <input type="checkbox" checked={dpaAllowCC} onChange={e=>setDpaAllowCC(e.target.checked)} />
+              <span style={{marginLeft:6}}>Allow leftover to Closing Costs</span>
+            </label>
+            <label className="row">
+              <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
+              <span style={{marginLeft:6}}>Count DPA toward Cap</span>
+            </label>
+            <label className="row">
+              <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
+              <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
+            </label>
+          </div>
+
+          <div style={{height:12}} />
+          <label>Cash to Close</label>
+          <input type="text" inputMode="numeric" value={cashToCloseInput} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
+          <div className="small">
+            Auto ON: field auto-populates from Net CTC (includes DPA and credits).
+            Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
           </div>
         </div>
 
