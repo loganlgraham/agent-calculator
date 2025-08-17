@@ -206,33 +206,27 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     if(!autoSellerCredits && !autoEstimateCTC) return;
     const other = Math.max(0, toNumber(otherCreditsInput));
     const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
-    const totalOther = other + dpaCreds;
     const baseCap = Math.max(0, programCap.amount);
-    const minBorrower = data.dpaMinBorrower || 0;
-    const preNet = data.ctcAfterDpa;
     const planned = (data.afcPlanned||0) + (data.ahaPlanned||0);
+    const minBorrower = data.dpaMinBorrower || 0;
 
     if(autoEstimateCTC){
-      const Cprime = preNet - other;
-      const sellerInputNum = Math.max(0, toNumber(sellerCreditsInput));
-      let sellerCalc = sellerInputNum;
-      if(autoSellerCredits){
-        const maxSeller = Math.max(0, Cprime - minBorrower);
-        const deficit = baseCap - planned - totalOther;
-        if(deficit <= 0){
-          sellerCalc = 0;
-        } else if(baseCap >= minBorrower && (Cprime + planned + totalOther) >= 2*baseCap){
-          sellerCalc = Math.min(maxSeller, deficit);
-        } else if((Cprime + planned + totalOther) <= 2*minBorrower){
-          sellerCalc = Math.max(0, Math.min(maxSeller, minBorrower - planned - totalOther));
-        } else {
-          sellerCalc = Math.max(0, Math.min(maxSeller, (Cprime - planned - totalOther)/2));
-        }
-        sellerCalc = Math.round(sellerCalc);
+      const preNet = data.ctcAfterDpa;
+      const Cprime = Math.max(0, preNet - other);
+      const maxSeller = Math.max(0, Cprime - minBorrower);
+
+      let sellerNeeded = Math.max(0, baseCap - planned - other - dpaCreds);
+      if(sellerNeeded > Cprime - baseCap){
+        sellerNeeded = Math.max(0, (Cprime - planned - other - dpaCreds) / 2);
       }
-      const sellerUsed = autoSellerCredits ? sellerCalc : sellerInputNum;
+      sellerNeeded = Math.min(maxSeller, Math.round(sellerNeeded));
+
+      const sellerInputNum = Math.max(0, toNumber(sellerCreditsInput));
+      const sellerUsed = autoSellerCredits ? sellerNeeded : sellerInputNum;
+
       const cashNet = Math.max(minBorrower, Cprime - sellerUsed);
       const ctcNeeded = Math.round(cashNet);
+
       if(autoSellerCredits && sellerUsed !== sellerInputNum){
         setSellerCreditsInput(toCurrency(sellerUsed));
       }
@@ -242,12 +236,15 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     } else if(autoSellerCredits){
       const cashManual = Math.max(0, toNumber(cashToCloseInput));
       const capUsed = Math.min(baseCap, cashManual);
+      const totalOther = other + dpaCreds;
       const needed = Math.max(0, Math.round(capUsed - planned - totalOther));
-      if(toNumber(sellerCreditsInput) !== needed){
-        setSellerCreditsInput(toCurrency(needed));
+      const maxSeller = Math.max(0, cashManual - minBorrower);
+      const sellerNeeded = Math.min(maxSeller, needed);
+      if(toNumber(sellerCreditsInput) !== sellerNeeded){
+        setSellerCreditsInput(toCurrency(sellerNeeded));
       }
     }
-  },[autoSellerCredits, autoEstimateCTC, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.dpaMinBorrower, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, sellerCreditsInput, cashToCloseInput]);
+  },[autoSellerCredits, autoEstimateCTC, otherCreditsInput, sellerCreditsInput, cashToCloseInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, data.dpaMinBorrower]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
