@@ -132,9 +132,13 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
     const seller = Math.max(0, toNumber(sellerCreditsInput));
     const other = Math.max(0, toNumber(otherCreditsInput));
-    remainingCC = Math.max(0, remainingCC - seller - other);
-
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
+
+    // Cash to close after DPA but before seller/other credits
+    const ctcAfterDpa = Math.max(0, remainingDown + Math.max(0, baseCC - dpa.dpaToCC) - (includeEarnestInCTC ? earnest : 0));
+
+    // Apply credits to get net cash to close
+    remainingCC = Math.max(0, Math.max(0, baseCC - dpa.dpaToCC) - seller - other);
     const ctcNet = Math.max(0, remainingDown + remainingCC - (includeEarnestInCTC ? earnest : 0));
     const ctcBase = Math.max(0, baseDown + baseCC);
 
@@ -142,7 +146,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const baseCap = Math.max(0, programCap.amount);
 
     // Cap uses the lesser of the Program Cap and Cash to Close.
-    const cashToClose = autoEstimateCTC ? ctcNet : ctcManual;
+    const cashToClose = autoEstimateCTC ? ctcAfterDpa : ctcManual;
 
     const preCredits = (seller + other) + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0);
 
@@ -151,15 +155,10 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: preCredits });
     const { grossCommission, agentShare, ahaShare, allocatedAfc, allocatedAha, allocatedAgent, allowed, afcPlanned, ahaPlanned, agentPlanned } = alloc;
 
-    // Additional credits needed (seller/other/DPA toward cap) so agent allocation becomes $0
-    // Threshold: remainingNeed <= (afcPlanned + ahaPlanned)
-    // remainingNeed = capUsed - preCredits
-    const additionalCreditsToZeroAgent = Math.max(0, (Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0)) - (Number(preCredits)||0));
-
     // Credits needed (seller/other/DPA toward cap) to reduce Agent contribution to $0:
     // When remainingNeed <= afcPlanned + ahaPlanned, agent allocation falls to zero.
     const creditsToZeroAgent = Math.max(0, (Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0)));
-    
+
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
 
@@ -178,7 +177,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       allowedBonusTotal: allowed, capUsed,
       earnest, includeEarnestInCTC, dpaCountsTowardCap,
       buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
-      
+
       creditsToZeroAgent,
       downPayment: baseDown,
       closingCosts: baseCC,
@@ -188,6 +187,9 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       dpaRequested: dpa.dpaRequested, dpaMaxByProgram: dpa.dpaMaxByProgram,
       dpaMinBorrower: dpa.minBorrower,
       ruleLabel: programCap.ruleLabel,
+      ctcAfterDpa,
+      ctcNet,
+      ctcBase,
     };
   },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
@@ -195,24 +197,18 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     if(autoSellerCredits){
       const other = Math.max(0, toNumber(otherCreditsInput));
       const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
-      const baseCtc = data.ctcNet + data.seller + other;
-      const planned = data.price * 0.0075;
-      let needed = programCap.amount - planned - other - dpaCreds;
-      if(!(programCap.amount <= baseCtc - needed - other)){
-        needed = (baseCtc - 2*other - dpaCreds - planned)/2;
-      }
-      needed = Math.max(0, needed);
+      const needed = Math.max(0, data.creditsToZeroAgent - other - dpaCreds);
       const formatted = toCurrency(needed);
       if(sellerCreditsInput!==formatted) setSellerCreditsInput(formatted);
     }
-  },[autoSellerCredits, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.ctcNet, data.seller, data.price, programCap.amount, sellerCreditsInput]);
+  },[autoSellerCredits, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.creditsToZeroAgent, sellerCreditsInput]);
 
   useEffect(()=>{
     if(autoEstimateCTC){
-      const formatted = toCurrency(data.ctcNet);
+      const formatted = toCurrency(data.ctcAfterDpa);
       if(cashToCloseInput!==formatted) setCashToCloseInput(formatted);
     }
-  },[autoEstimateCTC, data.ctcNet, cashToCloseInput]);
+  },[autoEstimateCTC, data.ctcAfterDpa, cashToCloseInput]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
@@ -367,7 +363,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
           <label>Cash to Close</label>
           <input type="text" inputMode="numeric" value={cashToCloseInput} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
           <div className="small">
-            Auto ON: field auto-populates from Net CTC (includes DPA and credits).
+            Auto ON: field auto-populates from CTC after DPA (before seller/other credits).
             Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
           </div>
         </div>
