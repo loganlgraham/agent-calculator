@@ -126,7 +126,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
     const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
     const ccPadPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
-    const paddedCC = baseCC * (1 + ccPadPct);
+    const paddedCC = baseCC + price * ccPadPct;
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
@@ -136,7 +136,6 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const seller = Math.max(0, toNumber(sellerCreditsInput));
     const other = Math.max(0, toNumber(otherCreditsInput));
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
-
     const minGap = Math.max(0, dpa.minBorrower - (remainingDown + preCreditCC));
     const preCreditCTC = remainingDown + preCreditCC + minGap;
     const ctcAfterDpa = Math.max(0, preCreditCTC - (includeEarnestInCTC ? earnest : 0));
@@ -170,37 +169,40 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
 
+    const capConsumed = capUsed ?? (allowed + seller);
     const onePct = price * 0.01 || 1;
-    const bonusProgress = Math.max(0, Math.min(1, allowed / onePct));
+    const bonusProgress = Math.max(0, Math.min(1, capConsumed / onePct));
 
-      return {
-        price,
-        commissionPct: Math.max(0, Number(digitsOnly(commissionPctInput)||"0")),
-        grossCommission, agentShare, ahaShare,
-        allocatedAfc, allocatedAha, allocatedAgent,
-        afcAllocPct: price? allocatedAfc/price : 0,
-        ahaAllocPct: price? allocatedAha/price : 0,
-        agentAllocPct: price? allocatedAgent/price : 0,
-        agentNet, ahaNet,
-        afcPlanned, ahaPlanned, agentPlanned,
-        allowedBonusTotal: allowed, capUsed,
-        earnest, includeEarnestInCTC, dpaCountsTowardCap,
-        buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
+    return {
+      price,
+      commissionPct: Math.max(0, Number(digitsOnly(commissionPctInput)||"0")),
+      grossCommission, agentShare, ahaShare,
+      allocatedAfc, allocatedAha, allocatedAgent,
+      afcAllocPct: price? allocatedAfc/price : 0,
+      ahaAllocPct: price? allocatedAha/price : 0,
+      agentAllocPct: price? allocatedAgent/price : 0,
+      agentNet, ahaNet,
+      afcPlanned, ahaPlanned, agentPlanned,
+      allowedBonusTotal: allowed, capUsed, bonusProgress,
+      earnest, includeEarnestInCTC, dpaCountsTowardCap,
+      buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
 
-        creditsToZeroAgent,
-        downPayment: baseDown,
-        closingCosts: displayCC,
-        seller, other,
-        dpaProgram, dpaMode,
-        dpaToDown: dpa.dpaToDown, dpaToCC: dpa.dpaToCC, dpaUnused: dpa.dpaUnused,
-        dpaRequested: dpa.dpaRequested, dpaMaxByProgram: dpa.dpaMaxByProgram,
-        dpaMinBorrower: dpa.minBorrower,
-        ruleLabel: programCap.ruleLabel,
-        ctcAfterDpa,
-        ctcNet,
-        ctcBase,
-      };
-      },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+      creditsToZeroAgent,
+      downPayment: baseDown,
+      closingCosts: displayCC,
+      seller, other,
+      dpaProgram, dpaMode,
+      dpaToDown: dpa.dpaToDown, dpaToCC: dpa.dpaToCC, dpaUnused: dpa.dpaUnused,
+      dpaRequested: dpa.dpaRequested, dpaMaxByProgram: dpa.dpaMaxByProgram,
+      dpaMinBorrower: dpa.minBorrower,
+      ruleLabel: programCap.ruleLabel,
+      ctcAfterDpa,
+      ctcNet,
+      ctcBase,
+    };
+  }, [priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC,
+      downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput,
+      dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
   useEffect(()=>{
     if(!autoSellerCredits && !autoEstimateCTC) return;
@@ -243,8 +245,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
         setSellerCreditsInput(toCurrency(sellerNeeded));
       }
     }
-  },[autoSellerCredits, autoEstimateCTC, otherCreditsInput, sellerCreditsInput, cashToCloseInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, data.dpaMinBorrower]);
-
+  },[autoSellerCredits, autoEstimateCTC, otherCreditsInput, sellerCreditsInput, cashToCloseInput, dpaCountsTowardCap, data.dpaToDown,
+      data.dpaToCC, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, data.dpaMinBorrower]);
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
@@ -373,9 +375,14 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setOtherCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
           }} onKeyDown={blurOnEnter} />
-
-          <div style={{height:12}} />
-          <label>Closing Cost Padding (%)</label>
+            <div style={{height:12}} />
+            <label>Earnest Money</label>
+            <input type="text" inputMode="numeric" value={earnestMoneyInput} onChange={e=>{
+              const v=(e.target.value||'').replace(/[^0-9.]/g,'');
+              setEarnestMoneyInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
+            }} onKeyDown={blurOnEnter} />
+            <div style={{height:12}} />
+            <label>Closing Cost Padding (%)</label>
           <input type="text" inputMode="decimal" value={closingCostPadPctInput} onChange={e=>setClosingCostPadPctInput(e.target.value)} onKeyDown={blurOnEnter} />
           <div className="small">Adds extra % buffer to closing costs.</div>
 
