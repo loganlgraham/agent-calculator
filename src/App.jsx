@@ -150,8 +150,9 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
 
+    const capConsumed = capUsed ?? (allowed + seller);
     const onePct = price * 0.01 || 1;
-    const bonusProgress = Math.max(0, Math.min(1, allowed / onePct));
+    const bonusProgress = Math.max(0, Math.min(1, capConsumed / onePct));
 
     return {
       price,
@@ -162,7 +163,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ahaAllocPct: price? allocatedAha/price : 0,
       agentAllocPct: price? allocatedAgent/price : 0,
       agentNet, ahaNet,
-      allowedBonusTotal: allowed, capUsed,
+      allowedBonusTotal: allowed, capUsed, bonusProgress,
       earnest, includeEarnestInCTC, dpaCountsTowardCap,
       buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
       
