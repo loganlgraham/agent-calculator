@@ -352,11 +352,11 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
           <div className="kv"><span className="label">Buyer Bonus Allowed</span>
             <span className="value">
               ${fmt(data.allowedBonusTotal)}
-              <span className="subtle" style={{marginLeft:8, color:'var(--text-subtle)'}}>({Math.round((data.bonusProgress||0)*100)}% of 1%)</span>
+              <span className="subtle" style={{marginLeft:8, color:'var(--text-subtle)'}}>({((data.bonusProgress||0)*100).toFixed(2)}% of 1%)</span>
             </span>
           </div>
           <div className="progress" style={{margin:'6px 0 8px 0'}}>
-            <div style={{width:`${Math.round((data.bonusProgress||0)*100)}%`}}/>
+            <div style={{width:`${(data.bonusProgress||0)*100}%`}}/>
           </div>
 
           <div className="kv"><span className="label">AFC Contribution (0.375%)</span><span className="value">${fmt(data.allocatedAfc)} ({pct(data.afcAllocPct)})</span></div>
@@ -389,7 +389,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
                 `Agent Share (50%): $${fmt(data.agentShare)}`,
                 `AHA Share (50%): $${fmt(data.ahaShare)}`,
                 ``,
-                `Buyer Bonus Allowed: $${fmt(data.allowedBonusTotal)} (${Math.round((data.bonusProgress||0)*100)}% of 1%)`,
+                `Buyer Bonus Allowed: $${fmt(data.allowedBonusTotal)} (${((data.bonusProgress||0)*100).toFixed(2)}% of 1%)`,
                 ` - AFC Contribution: $${fmt(data.allocatedAfc)} (${(data.afcAllocPct*100).toFixed(2)}%)`,
                 ` - AHA Contribution: $${fmt(data.allocatedAha)} (${(data.ahaAllocPct*100).toFixed(2)}%)`,
                 ` - Agent Contribution: $${fmt(data.allocatedAgent)} (${(data.agentAllocPct*100).toFixed(2)}%)`,
