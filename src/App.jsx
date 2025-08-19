@@ -177,7 +177,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       dpaMinBorrower: dpa.minBorrower,
       ruleLabel: programCap.ruleLabel,
     };
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
@@ -310,17 +310,23 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setOtherCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
           }} onKeyDown={blurOnEnter} />
-<div style={{height:12}} />
-<div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
-  <label className="row">
-    <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
-    <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
-  </label>
-  <label className="row">
-    <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
-    <span style={{marginLeft:6}}>Count DPA toward Cap</span>
-  </label>
-</div>
+          <div style={{height:12}} />
+          <label>Earnest Money</label>
+          <input type="text" inputMode="numeric" value={earnestMoneyInput} onChange={e=>{
+            const v=(e.target.value||'').replace(/[^0-9.]/g,'');
+            setEarnestMoneyInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
+          }} onKeyDown={blurOnEnter} />
+          <div style={{height:12}} />
+          <div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
+            <label className="row">
+              <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
+              <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
+            </label>
+            <label className="row">
+              <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
+              <span style={{marginLeft:6}}>Count DPA toward Cap</span>
+            </label>
+          </div>
 
 <div style={{height:12}} />
 <div className="row" style={{gap:8, alignItems:'center', flexWrap:'wrap'}}>
