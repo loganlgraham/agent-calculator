@@ -202,9 +202,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ctcNet,
       ctcBase,
     };
-  }, [priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC,
-      downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput,
-      dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  }, [priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
   useEffect(()=>{
     if(!autoSellerCredits && !autoEstimateCTC) return;
@@ -247,8 +245,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
         setSellerCreditsInput(toCurrency(sellerNeeded));
       }
     }
-  },[autoSellerCredits, autoEstimateCTC, otherCreditsInput, sellerCreditsInput, cashToCloseInput, dpaCountsTowardCap, data.dpaToDown,
-      data.dpaToCC, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, data.dpaMinBorrower]);
+  }, [autoSellerCredits, autoEstimateCTC, otherCreditsInput, sellerCreditsInput, cashToCloseInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, data.dpaMinBorrower]);
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
@@ -385,8 +382,8 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
             }} onKeyDown={blurOnEnter} />
             <div style={{height:12}} />
             <label>Closing Cost Padding (%)</label>
-          <input type="text" inputMode="decimal" value={closingCostPadPctInput} onChange={e=>setClosingCostPadPctInput(e.target.value)} onKeyDown={blurOnEnter} />
-          <div className="small">Adds extra % buffer to closing costs.</div>
+            <input type="text" inputMode="decimal" value={closingCostPadPctInput} onChange={e=>setClosingCostPadPctInput(e.target.value)} onKeyDown={blurOnEnter} />
+            <div className="small">Adds extra % buffer to closing costs.</div>
 
           <div style={{height:12}} />
           <div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
