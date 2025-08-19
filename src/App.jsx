@@ -130,7 +130,9 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
-    const remainingDown = Math.max(0, baseDown - dpa.dpaToDown);
+    const remainingDown = dpaProgram !== "None"
+      ? 0
+      : Math.max(0, baseDown - dpa.dpaToDown);
     const preCreditCC = Math.max(0, paddedCC - dpa.dpaToCC);
 
     const seller = Math.max(0, toNumber(sellerCreditsInput));
