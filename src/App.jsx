@@ -111,11 +111,13 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ? toNumber(downAmtInput)
       : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
     const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
+    const ccPadPct = 0; // closing cost padding as % of price
+    const paddedCC = baseCC + price * ccPadPct;
 
-    const dpa = computeDPA({ downPayment: baseDown, closingCosts: baseCC });
+    const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
     const remainingDown = Math.max(0, baseDown - dpa.dpaToDown);
-    let remainingCC = Math.max(0, baseCC - dpa.dpaToCC);
+    let remainingCC = Math.max(0, paddedCC - dpa.dpaToCC);
 
     const seller = Math.max(0, toNumber(sellerCreditsInput));
     const other = Math.max(0, toNumber(otherCreditsInput));
@@ -123,7 +125,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
     const ctcNet = Math.max(0, remainingDown + remainingCC - (includeEarnestInCTC ? earnest : 0));
-    const ctcBase = Math.max(0, baseDown + baseCC);
+    const ctcBase = Math.max(0, baseDown + paddedCC);
 
     const ctcManual = Math.max(0, toNumber(cashToCloseInput));
     const baseCap = Math.max(0, programCap.amount);
