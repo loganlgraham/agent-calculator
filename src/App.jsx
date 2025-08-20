@@ -110,17 +110,17 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const paddedCC = baseCC + price * ccPadPct;
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
-
-    const remainingDown = dpaProgram !== "None" ? 0 : Math.max(0, baseDown - dpa.dpaToDown);
-    let remainingCC = Math.max(0, baseCC - dpa.dpaToCC);
+    const minBorrower = dpa.minBorrower;
+    const remainingDown = Math.max(0, baseDown - dpa.dpaToDown);
+    const displayCC = Math.max(0, baseCC - dpa.dpaToCC) + minBorrower;
 
     const seller = Math.max(0, toNumber(sellerCreditsInput));
     const other = Math.max(0, toNumber(otherCreditsInput));
-    remainingCC = Math.max(0, remainingCC - seller - other);
 
+    const preCreditCTC = remainingDown + displayCC;
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
-    const ctcNet = Math.max(0, remainingDown + remainingCC - (includeEarnestInCTC ? earnest : 0));
-    const ctcBase = Math.max(0, baseDown + paddedCC);
+    const ctcNet = Math.max(0, preCreditCTC - seller - other - (includeEarnestInCTC ? earnest : 0));
+    const ctcBase = Math.max(0, baseDown + baseCC + minBorrower);
 
     const ctcManual = Math.max(0, toNumber(cashToCloseInput));
     const baseCap = Math.max(0, programCap.amount);
@@ -163,7 +163,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       allowedBonusTotal: allowed, capUsed, bonusProgress,
       earnest, includeEarnestInCTC, dpaCountsTowardCap,
       buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
-      
+
+      preCreditCTC, ctcNet, ctcBase, displayCC,
       creditsToZeroAgent,
       downPayment: baseDown,
       closingCosts: baseCC,
