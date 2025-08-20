@@ -53,8 +53,10 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   },[dpaProgram]);
 
   useEffect(()=>{
-    if(dpaPctSynced && dpaPctInput !== downPctInput) setDpaPctInput(downPctInput);
-  },[downPctInput, dpaPctSynced, dpaProgram, dpaPctInput]);
+    if(dpaPctSynced){
+      setDpaPctInput(prev => prev === downPctInput ? prev : downPctInput);
+    }
+  },[downPctInput, dpaPctSynced, dpaProgram]);
 
   useEffect(()=>{
     if (loanType==='FHA'){ setDownPctInput("3.5"); }
@@ -90,9 +92,9 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       const pct = Math.max(0, Number(digitsOnly(dpaPctInput)||"0"));
       const amt = Math.min(priceNum * (pct/100), dpaProgramMax);
       const val = amt? toCurrency(amt) : "$0";
-      if(val !== dpaAmountInput) setDpaAmountInput(val);
+      setDpaAmountInput(prev => prev === val ? prev : val);
     }
-  },[dpaProgram, dpaPctInput, dpaPctSynced, priceNum, dpaProgramMax, dpaAmountInput]);
+  },[dpaProgram, dpaPctInput, dpaPctSynced, priceNum, dpaProgramMax]);
 
   useEffect(()=>{
     if(!priceNum) { if(dpLastEdited==='percent') setDownAmtInput(""); else setDownPctInput("0"); return; }
@@ -220,16 +222,16 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   useEffect(()=>{
     if(autoSellerCredits){
       const val = toCurrency(data.sellerNeededForZeroAgent);
-      if(val !== sellerCreditsInput) setSellerCreditsInput(val);
+      setSellerCreditsInput(prev => prev === val ? prev : val);
     }
-  },[autoSellerCredits, data.sellerNeededForZeroAgent, sellerCreditsInput]);
+  },[autoSellerCredits, data.sellerNeededForZeroAgent]);
 
   useEffect(()=>{
     if(autoEstimateCTC){
       const val = toCurrency(data.ctcNet);
-      if(val !== cashToCloseInput) setCashToCloseInput(val);
+      setCashToCloseInput(prev => prev === val ? prev : val);
     }
-  },[autoEstimateCTC, data.ctcNet, cashToCloseInput]);
+  },[autoEstimateCTC, data.ctcNet]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
