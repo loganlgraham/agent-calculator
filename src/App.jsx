@@ -28,8 +28,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [downAmtInput, setDownAmtInput] = useState("");
   const [dpLastEdited, setDpLastEdited] = useState("percent"); // 'percent' | 'dollars'
 
-  // Closing cost % and padding
-  const [closingCostPctInput, setClosingCostPctInput] = useState("3");
+  // Closing cost padding (% of price)
   const [closingCostPadPctInput, setClosingCostPadPctInput] = useState("3");
 
   // Auto cash to close
@@ -135,9 +134,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const baseDown = dpLastEdited==='dollars' && downAmtInput!==""
       ? toNumber(downAmtInput)
       : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
-    const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
-    const ccPadPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
-    const paddedCC = baseCC + price * ccPadPct;
+    const ccPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
+    const paddedCC = price * ccPct;
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
@@ -210,7 +208,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     };
     
     // dpaMode intentionally omitted to prevent undefined reference
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
   const auto = useMemo(()=>{
     const price = priceNum;
@@ -219,9 +217,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const baseDown = dpLastEdited==='dollars' && downAmtInput!==""
       ? toNumber(downAmtInput)
       : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
-    const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
-    const ccPadPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
-    const paddedCC = baseCC + price * ccPadPct;
+    const ccPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
+    const paddedCC = price * ccPct;
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
@@ -260,7 +257,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       const seller = autoSellerCredits ? Math.max(0, creditsNeeded - otherForCap) : Math.max(0, toNumber(sellerCreditsInput));
       return { seller: Math.round(seller), ctc: cashManual };
     }
-  },[autoEstimateCTC, autoSellerCredits, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, programCap.amount, sellerCreditsInput, cashToCloseInput]);
+  },[autoEstimateCTC, autoSellerCredits, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, programCap.amount, sellerCreditsInput, cashToCloseInput]);
 
   useEffect(()=>{
     if(autoSellerCredits){
