@@ -37,17 +37,16 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   // DPA
   const [dpaProgram, setDpaProgram] = useState("None"); // None | CHFA | Essex | Custom
-  const [dpaMode, setDpaMode] = useState("percent"); // percent | dollars
-  const [dpaAmountInput, setDpaAmountInput] = useState("3"); // default shown
+  const [dpaAmountInput, setDpaAmountInput] = useState("$0");
   const [dpaMaxPctInput, setDpaMaxPctInput] = useState("4"); // CHFA 4%, Essex 5%
   const [dpaMinBorrowerInput, setDpaMinBorrowerInput] = useState("$1,000"); // CHFA $1k, Essex $0
   const [dpaAllowCC, setDpaAllowCC] = useState(true);
   const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(false);
 
   useEffect(()=>{
-    if(dpaProgram==="CHFA"){ setDpaMaxPctInput("4"); setDpaMinBorrowerInput("$1,000"); if(dpaMode==="percent" && (!dpaAmountInput||dpaAmountInput==="0")) setDpaAmountInput("3"); }
-    else if(dpaProgram==="Essex"){ setDpaMaxPctInput("5"); setDpaMinBorrowerInput("$0"); if(dpaMode==="percent" && (!dpaAmountInput||dpaAmountInput==="0")) setDpaAmountInput("3"); }
-    else if(dpaProgram==="None"){ setDpaAmountInput("0"); }
+    if(dpaProgram==="CHFA"){ setDpaMaxPctInput("4"); setDpaMinBorrowerInput("$1,000"); }
+    else if(dpaProgram==="Essex"){ setDpaMaxPctInput("5"); setDpaMinBorrowerInput("$0"); }
+    else if(dpaProgram==="None"){ setDpaMaxPctInput("0"); setDpaMinBorrowerInput("$0"); setDpaAmountInput("$0"); }
   },[dpaProgram]);
 
   useEffect(()=>{
@@ -64,6 +63,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const blurOnEnter = (e)=>{ if(e.key==='Enter') e.currentTarget.blur(); };
 
   const priceNum = useMemo(()=>toNumber(homePriceInput),[homePriceInput]);
+  const dpaProgramMax = useMemo(()=> priceNum * (Math.max(0, Number(digitsOnly(dpaMaxPctInput)||"0"))/100), [priceNum, dpaMaxPctInput]);
 
   useEffect(()=>{
     if(!priceNum) { if(dpLastEdited==='percent') setDownAmtInput(""); else setDownPctInput("0"); return; }
@@ -79,13 +79,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   },[priceNum, downPctInput, downAmtInput, dpLastEdited]);
 
   const computeDPA = ({ downPayment, closingCosts })=>{
-    let dpaRequested = 0;
-    if (dpaMode==="percent"){
-      dpaRequested = priceNum * (Math.max(0, Number(digitsOnly(dpaAmountInput)||"0"))/100);
-    } else {
-      dpaRequested = toNumber(dpaAmountInput);
-    }
-    const dpaMaxByProgram = priceNum * (Math.max(0, Number(digitsOnly(dpaMaxPctInput)||"0"))/100);
+    const dpaRequested = Math.max(0, toNumber(dpaAmountInput));
+    const dpaMaxByProgram = dpaProgramMax;
     let dpaAvailable = Math.min(dpaRequested, dpaMaxByProgram);
     const minBorrower = Math.max(0, toNumber(dpaMinBorrowerInput));
     const allowToDown = Math.max(0, downPayment - minBorrower);
@@ -173,13 +168,14 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       downPayment: baseDown,
       closingCosts: baseCC,
       seller, other,
-      dpaProgram, dpaMode,
+      dpaProgram,
       dpaToDown: dpa.dpaToDown, dpaToCC: dpa.dpaToCC, dpaUnused: dpa.dpaUnused,
       dpaRequested: dpa.dpaRequested, dpaMaxByProgram: dpa.dpaMaxByProgram,
       dpaMinBorrower: dpa.minBorrower,
       ruleLabel: programCap.ruleLabel,
     };
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+
+  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
@@ -261,16 +257,14 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
                 </select>
               </div>
               <div>
-                <label>Amount Mode</label>
-                <select value={dpaMode} onChange={e=>setDpaMode(e.target.value)}>
-                  <option value="percent">% of Price</option>
-                  <option value="dollars">$ Flat</option>
-                </select>
-              </div>
-              <div>
-                <label>Amount ({dpaMode==="percent"?"%": "$"})</label>
-                <input type="text" inputMode={dpaMode==="percent"?"decimal":"numeric"} value={dpaAmountInput} onChange={e=>setDpaAmountInput(e.target.value)} onKeyDown={blurOnEnter} />
-                <div className="small">Editable. CHFA often 3–4%.</div>
+                <label>Requested DPA ($)</label>
+                <input type="text" inputMode="numeric" value={dpaAmountInput} onChange={e=>{
+                  const v=(e.target.value||'').replace(/[^0-9.]/g,'');
+                  let n=v===''? '' : Number(v);
+                  if(n!=='' && Number.isFinite(n)) n=Math.min(n,dpaProgramMax);
+                  setDpaAmountInput(n===''? '' : Number(n).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
+                }} onKeyDown={blurOnEnter} />
+                <div className="small">Program Max: {toCurrency(dpaProgramMax)}</div>
               </div>
               <div>
                 <label>Program Max (% of Price)</label>
