@@ -16,7 +16,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   // Earnest money (reduces net cash to close if included)
   const [earnestMoneyInput, setEarnestMoneyInput] = useState("$0");
-  const [includeEarnestInCTC, setIncludeEarnestInCTC] = useState(true);
+  const [includeEarnestInCTC, setIncludeEarnestInCTC] = useState(false);
   const [showAgentZeroCalc, setShowAgentZeroCalc] = useState(false);
 
 
@@ -34,21 +34,24 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [closingCostPadPctInput, setClosingCostPadPctInput] = useState("3");
 
   // Auto cash to close
-  const [autoEstimateCTC, setAutoEstimateCTC] = useState(false);
+  const [autoEstimateCTC, setAutoEstimateCTC] = useState(true);
 
   // DPA
   const [dpaProgram, setDpaProgram] = useState("None"); // None | CHFA | Essex | Custom
-  const [dpaAmountInput, setDpaAmountInput] = useState("$0");
+  const [dpaPctInput, setDpaPctInput] = useState(downPctInput);
+  const [dpaPctSynced, setDpaPctSynced] = useState(true);
   const [dpaMaxPctInput, setDpaMaxPctInput] = useState("4"); // CHFA 4%, Essex 5%
   const [dpaMinBorrowerInput, setDpaMinBorrowerInput] = useState("$1,000"); // CHFA $1k, Essex $0
-  const [dpaAllowCC, setDpaAllowCC] = useState(true);
-  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(true);
+  const [dpaAllowCC, setDpaAllowCC] = useState(false);
+  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(false);
 
   useEffect(()=>{
     if(dpaProgram==="CHFA"){ setDpaMaxPctInput("4"); setDpaMinBorrowerInput("$1,000"); }
     else if(dpaProgram==="Essex"){ setDpaMaxPctInput("5"); setDpaMinBorrowerInput("$0"); }
-    else if(dpaProgram==="None"){ setDpaMaxPctInput("0"); setDpaMinBorrowerInput("$0"); setDpaAmountInput("$0"); }
+    else if(dpaProgram==="None"){ setDpaMaxPctInput("0"); setDpaMinBorrowerInput("$0"); setDpaPctInput("0"); setDpaPctSynced(true); }
   },[dpaProgram]);
+
+  useEffect(()=>{ if(dpaPctSynced) setDpaPctInput(downPctInput); },[downPctInput, dpaPctSynced]);
 
   useEffect(()=>{
     if (loanType==='FHA'){ setDownPctInput("3.5"); }
@@ -78,6 +81,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   const priceNum = useMemo(()=>toNumber(homePriceInput),[homePriceInput]);
   const dpaProgramMax = useMemo(()=> priceNum * (Math.max(0, Number(digitsOnly(dpaMaxPctInput)||"0"))/100), [priceNum, dpaMaxPctInput]);
+  const dpaRequested = useMemo(()=> priceNum * (Math.max(0, Number(digitsOnly(dpaPctInput)||"0"))/100), [priceNum, dpaPctInput]);
 
   useEffect(()=>{
     if(!priceNum) { if(dpLastEdited==='percent') setDownAmtInput(""); else setDownPctInput("0"); return; }
@@ -93,7 +97,6 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   },[priceNum, downPctInput, downAmtInput, dpLastEdited]);
 
   const computeDPA = ({ downPayment, closingCosts })=>{
-    const dpaRequested = Math.max(0, toNumber(dpaAmountInput));
     const dpaMaxByProgram = dpaProgramMax;
     let dpaAvailable = Math.min(dpaRequested, dpaMaxByProgram);
     const minBorrower = Math.max(0, toNumber(dpaMinBorrowerInput));
@@ -197,8 +200,11 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ctcNet,
       ctcBase,
     };
-    
-    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+
+    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaPctInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+
+  useEffect(()=>{ if(autoSellerCredits) setSellerCreditsInput(toCurrency(data.creditsToZeroAgent)); },[data.creditsToZeroAgent, autoSellerCredits]);
+  useEffect(()=>{ if(autoEstimateCTC) setCashToCloseInput(toCurrency(data.ctcNet)); },[data.ctcNet, autoEstimateCTC]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
@@ -206,6 +212,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
     const v=(e.target.value||'').replace(/[^0-9.]/g,'');
     setDownAmtInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
   };
+  const handleDpaPctChange = (e)=>{ setDpaPctSynced(false); setDpaPctInput(e.target.value); };
 
   return (
     <div className="app">
@@ -229,6 +236,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
                 <option>VA</option>
                 <option>Conventional</option>
               </select>
+              <div className="small">Max Credits: {toCurrency(programCap.amount)}</div>
             </div>
             <div>
               <label>Occupancy</label>
@@ -281,13 +289,9 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
                 </select>
               </div>
               <div>
-                <label>Requested DPA ($)</label>
-                <input type="text" inputMode="numeric" value={dpaAmountInput} onChange={e=>{
-                  const v=(e.target.value||'').replace(/[^0-9.]/g,'');
-                  let n=v===''? '' : Number(v);
-                  if(n!=='' && Number.isFinite(n)) n=Math.min(n,dpaProgramMax);
-                  setDpaAmountInput(n===''? '' : Number(n).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
-                }} onKeyDown={blurOnEnter} />
+                <label>Requested DPA (%)</label>
+                <input type="text" inputMode="decimal" value={dpaPctInput} onChange={handleDpaPctChange} onKeyDown={blurOnEnter} />
+                <div className="small">Requested DPA ($): {toCurrency(dpaRequested)}</div>
                 <div className="small">Program Max: {toCurrency(dpaProgramMax)}</div>
               </div>
               <div>
@@ -314,7 +318,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
               <span>Auto-calc Seller Credits to zero Agent</span>
             </label>
           </div>
-          <input type="text" inputMode="numeric" value={sellerCreditsInput} onChange={e=>{
+          <input type="text" inputMode="numeric" value={sellerCreditsInput} readOnly={autoSellerCredits} onChange={e=>{
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setAutoSellerCredits(false);
             setSellerCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
@@ -360,7 +364,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
 
           <div style={{height:12}} />
           <label>Cash to Close</label>
-          <input type="text" inputMode="numeric" value={cashToCloseInput} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
+          <input type="text" inputMode="numeric" value={cashToCloseInput} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
           <div className="small">
             Auto ON: field auto-populates from net CTC after DPA and all credits.
             Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
