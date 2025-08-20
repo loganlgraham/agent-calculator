@@ -14,9 +14,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [otherCreditsInput, setOtherCreditsInput] = useState("$0");
   const [cashToCloseInput, setCashToCloseInput] = useState("$0");
 
-  // Earnest money (reduces net cash to close if included)
+  // Earnest money (reduces net cash to close)
   const [earnestMoneyInput, setEarnestMoneyInput] = useState("$0");
-  const [includeEarnestInCTC, setIncludeEarnestInCTC] = useState(false);
   const [showAgentZeroCalc, setShowAgentZeroCalc] = useState(false);
 
 
@@ -150,11 +149,11 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
     const minGap = Math.max(0, dpa.minBorrower - (remainingDown + preCreditCC));
     const preCreditCTC = remainingDown + preCreditCC + minGap;
-    const ctcAfterDpa = Math.max(0, preCreditCTC - (includeEarnestInCTC ? earnest : 0));
+    const ctcAfterDpa = Math.max(0, preCreditCTC - earnest);
 
     let remainingCC = Math.max(0, preCreditCC - seller - other);
     const netBeforeEarnest = remainingDown + remainingCC + minGap;
-    const ctcNetCalc = Math.max(0, netBeforeEarnest - (includeEarnestInCTC ? earnest : 0));
+    const ctcNetCalc = Math.max(0, netBeforeEarnest - earnest);
     // Round cash-to-close to whole dollars for stability
     const ctcNet = Math.round(Math.max(dpa.minBorrower, ctcNetCalc));
     const ctcBase = Math.max(0, baseDown + paddedCC);
@@ -174,16 +173,16 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const { grossCommission, agentShare, ahaShare, allocatedAfc, allocatedAha, allocatedAgent, allowed, afcPlanned, ahaPlanned, agentPlanned } = alloc;
 
     // Total credits needed to reduce Agent contribution to $0
-    const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0))));
+    const capForAgent = Math.min(capUsed, price * 0.01);
+    const creditsToZeroAgent = Math.max(0, Math.round(capForAgent - (afcPlanned + ahaPlanned)));
     // Seller credits required after accounting for other credits and DPA counted toward cap
     const sellerNeededForZeroAgent = Math.max(0, creditsToZeroAgent - (other + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0)));
 
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
 
-    const capConsumed = capUsed ?? (allowed + seller);
     const onePct = price * 0.01 || 1;
-    const bonusProgress = Math.max(0, Math.min(1, capConsumed / onePct));
+    const bonusProgress = Math.max(0, Math.min(1, allowed / onePct));
 
     return {
       price,
@@ -196,7 +195,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       agentNet, ahaNet,
       afcPlanned, ahaPlanned, agentPlanned,
       allowedBonusTotal: allowed, capUsed, bonusProgress,
-      earnest, includeEarnestInCTC, dpaCountsTowardCap,
+      earnest, dpaCountsTowardCap,
       buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
 
       creditsToZeroAgent,
@@ -215,7 +214,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     };
     
     // dpaMode intentionally omitted to prevent undefined reference
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
   const auto = useMemo(()=>{
     const price = priceNum;
@@ -243,23 +242,25 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     if(autoEstimateCTC){
       const remainingCCNoSeller = Math.max(0, preCreditCC - other);
       const netBeforeEarnest0 = remainingDown + remainingCCNoSeller + minGap;
-      const ctc0 = Math.round(Math.max(dpa.minBorrower, netBeforeEarnest0 - (includeEarnestInCTC ? earnest : 0)));
+      const ctc0 = Math.round(Math.max(dpa.minBorrower, netBeforeEarnest0 - earnest));
       const capUsed0 = Math.min(baseCap, ctc0);
-      const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed0)||0) - ((price*0.00375) + (price*0.00375))));
+      const capForAgent0 = Math.min(capUsed0, price * 0.01);
+      const creditsToZeroAgent = Math.max(0, Math.round(capForAgent0 - ((price*0.00375) + (price*0.00375))));
       const seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
       const remainingCCFinal = Math.max(0, preCreditCC - seller - other);
       const netBeforeEarnestFinal = remainingDown + remainingCCFinal + minGap;
-      const ctc = Math.round(Math.max(dpa.minBorrower, netBeforeEarnestFinal - (includeEarnestInCTC ? earnest : 0)));
+      const ctc = Math.round(Math.max(dpa.minBorrower, netBeforeEarnestFinal - earnest));
       return { seller: Math.round(seller), ctc };
     } else {
       const cashToClose = cashManual;
       const capUsed = Math.min(baseCap, cashToClose);
       const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: other + dpaCapCredits });
-      const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(alloc.afcPlanned)||0) + (Number(alloc.ahaPlanned)||0))));
+      const capForAgent = Math.min(capUsed, price * 0.01);
+      const creditsToZeroAgent = Math.max(0, Math.round(capForAgent - ((Number(alloc.afcPlanned)||0) + (Number(alloc.ahaPlanned)||0))));
       const seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
       return { seller: Math.round(seller), ctc: cashManual };
     }
-  },[autoEstimateCTC, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, cashToCloseInput]);
+  },[autoEstimateCTC, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, programCap.amount, cashToCloseInput]);
 
   useEffect(()=>{
     if(autoSellerCredits){
@@ -429,10 +430,6 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
             <label className="row">
               <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
               <span style={{marginLeft:6}}>Count DPA toward Cap</span>
-            </label>
-            <label className="row">
-              <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
-              <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
             </label>
           </div>
 
