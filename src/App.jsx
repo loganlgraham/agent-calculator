@@ -142,9 +142,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
-    const remainingDown = dpaProgram !== "None"
-      ? 0
-      : Math.max(0, baseDown - dpa.dpaToDown);
+    const remainingDown = Math.max(0, baseDown - dpa.dpaToDown);
     const preCreditCC = Math.max(0, paddedCC - dpa.dpaToCC);
 
     const seller = Math.max(0, toNumber(sellerCreditsInput));
@@ -232,9 +230,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
-    const remainingDown = dpaProgram !== "None"
-      ? 0
-      : Math.max(0, baseDown - dpa.dpaToDown);
+    const remainingDown = Math.max(0, baseDown - dpa.dpaToDown);
     const preCreditCC = Math.max(0, paddedCC - dpa.dpaToCC);
     const other = Math.max(0, toNumber(otherCreditsInput));
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
@@ -244,33 +240,25 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const baseCap = Math.max(0, programCap.amount);
     const cashManual = Math.max(0, toNumber(cashToCloseInput));
 
-    let seller = 0;
-    let ctcNet = 0;
-
     if(autoEstimateCTC){
-      for(let i=0;i<10;i++){
-        const remainingCC = Math.max(0, preCreditCC - seller - other);
-        const netBeforeEarnest = remainingDown + remainingCC + minGap;
-        const ctcNetCalc = Math.max(0, netBeforeEarnest - (includeEarnestInCTC ? earnest : 0));
-        ctcNet = Math.round(Math.max(dpa.minBorrower, ctcNetCalc));
-        const cashToClose = ctcNet;
-        const capUsed = Math.min(baseCap, cashToClose);
-        const preCredits = seller + other + dpaCapCredits;
-        const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: preCredits });
-        const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(alloc.afcPlanned)||0) + (Number(alloc.ahaPlanned)||0))));
-        const needed = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
-        if(Math.abs(needed - seller) < 1){ seller = needed; break; }
-        seller = needed;
-      }
+      const remainingCCNoSeller = Math.max(0, preCreditCC - other);
+      const netBeforeEarnest0 = remainingDown + remainingCCNoSeller + minGap;
+      const ctc0 = Math.round(Math.max(dpa.minBorrower, netBeforeEarnest0 - (includeEarnestInCTC ? earnest : 0)));
+      const capUsed0 = Math.min(baseCap, ctc0);
+      const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed0)||0) - ((price*0.00375) + (price*0.00375))));
+      const seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
+      const remainingCCFinal = Math.max(0, preCreditCC - seller - other);
+      const netBeforeEarnestFinal = remainingDown + remainingCCFinal + minGap;
+      const ctc = Math.round(Math.max(dpa.minBorrower, netBeforeEarnestFinal - (includeEarnestInCTC ? earnest : 0)));
+      return { seller: Math.round(seller), ctc };
     } else {
       const cashToClose = cashManual;
       const capUsed = Math.min(baseCap, cashToClose);
       const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: other + dpaCapCredits });
       const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(alloc.afcPlanned)||0) + (Number(alloc.ahaPlanned)||0))));
-      seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
+      const seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
+      return { seller: Math.round(seller), ctc: cashManual };
     }
-
-    return { seller: Math.round(seller), ctc: ctcNet };
   },[autoEstimateCTC, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, cashToCloseInput]);
 
   useEffect(()=>{
