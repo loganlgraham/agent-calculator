@@ -198,7 +198,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ctcBase,
     };
     
-    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+    // dpaMode intentionally omitted to prevent undefined reference
+    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
