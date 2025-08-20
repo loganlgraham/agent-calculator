@@ -16,7 +16,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   // Earnest money (reduces net cash to close if included)
   const [earnestMoneyInput, setEarnestMoneyInput] = useState("$0");
-  const [includeEarnestInCTC, setIncludeEarnestInCTC] = useState(true);
+  const [includeEarnestInCTC, setIncludeEarnestInCTC] = useState(false);
   const [showAgentZeroCalc, setShowAgentZeroCalc] = useState(false);
 
 
@@ -41,8 +41,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [dpaAmountInput, setDpaAmountInput] = useState("$0");
   const [dpaMaxPctInput, setDpaMaxPctInput] = useState("4"); // CHFA 4%, Essex 5%
   const [dpaMinBorrowerInput, setDpaMinBorrowerInput] = useState("$1,000"); // CHFA $1k, Essex $0
-  const [dpaAllowCC, setDpaAllowCC] = useState(true);
-  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(true);
+  const [dpaAllowCC, setDpaAllowCC] = useState(false);
+  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(false);
   const [dpaPctInput, setDpaPctInput] = useState("");
   const [dpaPctSynced, setDpaPctSynced] = useState(true);
 
@@ -53,8 +53,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   },[dpaProgram]);
 
   useEffect(()=>{
-    if(dpaPctSynced) setDpaPctInput(downPctInput);
-  },[downPctInput, dpaPctSynced, dpaProgram]);
+    if(dpaPctSynced && dpaPctInput !== downPctInput) setDpaPctInput(downPctInput);
+  },[downPctInput, dpaPctSynced, dpaProgram, dpaPctInput]);
 
   useEffect(()=>{
     if (loanType==='FHA'){ setDownPctInput("3.5"); }
@@ -89,9 +89,10 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     if(dpaProgram !== "None" && dpaPctSynced){
       const pct = Math.max(0, Number(digitsOnly(dpaPctInput)||"0"));
       const amt = Math.min(priceNum * (pct/100), dpaProgramMax);
-      setDpaAmountInput(amt? toCurrency(amt) : "$0");
+      const val = amt? toCurrency(amt) : "$0";
+      if(val !== dpaAmountInput) setDpaAmountInput(val);
     }
-  },[dpaProgram, dpaPctInput, dpaPctSynced, priceNum, dpaProgramMax]);
+  },[dpaProgram, dpaPctInput, dpaPctSynced, priceNum, dpaProgramMax, dpaAmountInput]);
 
   useEffect(()=>{
     if(!priceNum) { if(dpLastEdited==='percent') setDownAmtInput(""); else setDownPctInput("0"); return; }
@@ -218,15 +219,17 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   useEffect(()=>{
     if(autoSellerCredits){
-      setSellerCreditsInput(toCurrency(data.sellerNeededForZeroAgent));
+      const val = toCurrency(data.sellerNeededForZeroAgent);
+      if(val !== sellerCreditsInput) setSellerCreditsInput(val);
     }
-  },[autoSellerCredits, data.sellerNeededForZeroAgent]);
+  },[autoSellerCredits, data.sellerNeededForZeroAgent, sellerCreditsInput]);
 
   useEffect(()=>{
     if(autoEstimateCTC){
-      setCashToCloseInput(toCurrency(data.ctcNet));
+      const val = toCurrency(data.ctcNet);
+      if(val !== cashToCloseInput) setCashToCloseInput(val);
     }
-  },[autoEstimateCTC, data.ctcNet]);
+  },[autoEstimateCTC, data.ctcNet, cashToCloseInput]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
