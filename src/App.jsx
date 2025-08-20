@@ -43,12 +43,18 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [dpaMinBorrowerInput, setDpaMinBorrowerInput] = useState("$1,000"); // CHFA $1k, Essex $0
   const [dpaAllowCC, setDpaAllowCC] = useState(true);
   const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(true);
+  const [dpaPctInput, setDpaPctInput] = useState("");
+  const [dpaPctSynced, setDpaPctSynced] = useState(true);
 
   useEffect(()=>{
     if(dpaProgram==="CHFA"){ setDpaMaxPctInput("4"); setDpaMinBorrowerInput("$1,000"); }
     else if(dpaProgram==="Essex"){ setDpaMaxPctInput("5"); setDpaMinBorrowerInput("$0"); }
     else if(dpaProgram==="None"){ setDpaMaxPctInput("0"); setDpaMinBorrowerInput("$0"); setDpaAmountInput("$0"); }
   },[dpaProgram]);
+
+  useEffect(()=>{
+    if(dpaPctSynced) setDpaPctInput(downPctInput);
+  },[downPctInput, dpaPctSynced, dpaProgram]);
 
   useEffect(()=>{
     if (loanType==='FHA'){ setDownPctInput("3.5"); }
