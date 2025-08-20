@@ -217,21 +217,75 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     };
     
     // dpaMode intentionally omitted to prevent undefined reference
-    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+
+  const auto = useMemo(()=>{
+    const price = priceNum;
+    const commRate = Math.max(0, Number(digitsOnly(commissionPctInput)||"0"))/100;
+
+    const baseDown = dpLastEdited==='dollars' && downAmtInput!==""
+      ? toNumber(downAmtInput)
+      : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
+    const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
+    const ccPadPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
+    const paddedCC = baseCC + price * ccPadPct;
+
+    const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
+
+    const remainingDown = dpaProgram !== "None"
+      ? 0
+      : Math.max(0, baseDown - dpa.dpaToDown);
+    const preCreditCC = Math.max(0, paddedCC - dpa.dpaToCC);
+    const other = Math.max(0, toNumber(otherCreditsInput));
+    const earnest = Math.max(0, toNumber(earnestMoneyInput));
+    const minGap = Math.max(0, dpa.minBorrower - (remainingDown + preCreditCC));
+
+    const dpaCapCredits = dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0;
+    const baseCap = Math.max(0, programCap.amount);
+    const cashManual = Math.max(0, toNumber(cashToCloseInput));
+
+    let seller = 0;
+    let ctcNet = 0;
+
+    if(autoEstimateCTC){
+      for(let i=0;i<10;i++){
+        const remainingCC = Math.max(0, preCreditCC - seller - other);
+        const netBeforeEarnest = remainingDown + remainingCC + minGap;
+        const ctcNetCalc = Math.max(0, netBeforeEarnest - (includeEarnestInCTC ? earnest : 0));
+        ctcNet = Math.round(Math.max(dpa.minBorrower, ctcNetCalc));
+        const cashToClose = ctcNet;
+        const capUsed = Math.min(baseCap, cashToClose);
+        const preCredits = seller + other + dpaCapCredits;
+        const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: preCredits });
+        const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(alloc.afcPlanned)||0) + (Number(alloc.ahaPlanned)||0))));
+        const needed = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
+        if(Math.abs(needed - seller) < 1){ seller = needed; break; }
+        seller = needed;
+      }
+    } else {
+      const cashToClose = cashManual;
+      const capUsed = Math.min(baseCap, cashToClose);
+      const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: other + dpaCapCredits });
+      const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(alloc.afcPlanned)||0) + (Number(alloc.ahaPlanned)||0))));
+      seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
+    }
+
+    return { seller: Math.round(seller), ctc: ctcNet };
+  },[autoEstimateCTC, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, cashToCloseInput]);
 
   useEffect(()=>{
     if(autoSellerCredits){
-      const val = toCurrency(data.sellerNeededForZeroAgent);
+      const val = toCurrency(auto.seller);
       setSellerCreditsInput(prev => prev === val ? prev : val);
     }
-  },[autoSellerCredits, data.sellerNeededForZeroAgent]);
+  },[autoSellerCredits, auto.seller]);
 
   useEffect(()=>{
     if(autoEstimateCTC){
-      const val = toCurrency(data.ctcNet);
+      const val = toCurrency(auto.ctc);
       setCashToCloseInput(prev => prev === val ? prev : val);
     }
-  },[autoEstimateCTC, data.ctcNet]);
+  },[autoEstimateCTC, auto.ctc]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
