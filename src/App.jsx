@@ -10,7 +10,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [homePriceInput, setHomePriceInput] = useState("$400,000");
   const [commissionPctInput, setCommissionPctInput] = useState("2.5");
   const [sellerCreditsInput, setSellerCreditsInput] = useState("$0");
-  const [autoSellerCredits, setAutoSellerCredits] = useState(true);
+  const [autoSellerCredits, setAutoSellerCredits] = useState(false);
   const [otherCreditsInput, setOtherCreditsInput] = useState("$0");
   const [cashToCloseInput, setCashToCloseInput] = useState("$0");
 
@@ -29,11 +29,12 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [downAmtInput, setDownAmtInput] = useState("");
   const [dpLastEdited, setDpLastEdited] = useState("percent"); // 'percent' | 'dollars'
 
-  // Closing cost %
+  // Closing cost % and padding
   const [closingCostPctInput, setClosingCostPctInput] = useState("3");
+  const [closingCostPadPctInput, setClosingCostPadPctInput] = useState("3");
 
   // Auto cash to close
-  const [autoEstimateCTC, setAutoEstimateCTC] = useState(true);
+  const [autoEstimateCTC, setAutoEstimateCTC] = useState(false);
 
   // DPA
   const [dpaProgram, setDpaProgram] = useState("None"); // None | CHFA | Essex | Custom
@@ -41,7 +42,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const [dpaMaxPctInput, setDpaMaxPctInput] = useState("4"); // CHFA 4%, Essex 5%
   const [dpaMinBorrowerInput, setDpaMinBorrowerInput] = useState("$1,000"); // CHFA $1k, Essex $0
   const [dpaAllowCC, setDpaAllowCC] = useState(true);
-  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(false);
+  const [dpaCountsTowardCap, setDpaCountsTowardCap] = useState(true);
 
   useEffect(()=>{
     if(dpaProgram==="CHFA"){ setDpaMaxPctInput("4"); setDpaMinBorrowerInput("$1,000"); }
@@ -57,9 +58,22 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
   const digitsOnly = (s) => (s||"").replace(/[^0-9.]/g,"");
   const toNumber = (v) => { if(v===""||v==null) return 0; const n=Number(digitsOnly(v)); return Number.isFinite(n)? n : 0; };
-  const toCurrency = (n) => Number(n).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0});
-  const fmt = (n) => Number(n).toLocaleString(undefined,{maximumFractionDigits:2,minimumFractionDigits:2});
-  const pct = (n) => (n*100).toFixed(2)+"%";
+  const toCurrency = (n) => {
+    const num = Number(n);
+    return Number.isFinite(num)
+      ? num.toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})
+      : "$0";
+  };
+  const fmt = (n) => {
+    const num = Number(n);
+    return Number.isFinite(num)
+      ? num.toLocaleString(undefined,{maximumFractionDigits:2,minimumFractionDigits:2})
+      : "0.00";
+  };
+  const pct = (n) => {
+    const num = Number(n);
+    return Number.isFinite(num) ? (num*100).toFixed(2)+"%" : "0.00%";
+  };
   const blurOnEnter = (e)=>{ if(e.key==='Enter') e.currentTarget.blur(); };
 
   const priceNum = useMemo(()=>toNumber(homePriceInput),[homePriceInput]);
@@ -106,44 +120,49 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ? toNumber(downAmtInput)
       : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
     const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
-    const ccPadPct = 0; // closing cost padding as % of price
+    const ccPadPct = Math.max(0, Number(digitsOnly(closingCostPadPctInput)||"0"))/100;
     const paddedCC = baseCC + price * ccPadPct;
 
     const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
-    const minBorrower = dpa.minBorrower;
-    const remainingDown = Math.max(0, baseDown - dpa.dpaToDown);
-    const displayCC = Math.max(0, baseCC - dpa.dpaToCC) + minBorrower;
+
+    const remainingDown = dpaProgram !== "None"
+      ? 0
+      : Math.max(0, baseDown - dpa.dpaToDown);
+    const preCreditCC = Math.max(0, paddedCC - dpa.dpaToCC);
 
     const seller = Math.max(0, toNumber(sellerCreditsInput));
     const other = Math.max(0, toNumber(otherCreditsInput));
-
-    const preCreditCTC = remainingDown + displayCC;
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
-    const ctcNet = Math.max(0, preCreditCTC - seller - other - (includeEarnestInCTC ? earnest : 0));
-    const ctcBase = Math.max(0, baseDown + baseCC + minBorrower);
+    const minGap = Math.max(0, dpa.minBorrower - (remainingDown + preCreditCC));
+    const preCreditCTC = remainingDown + preCreditCC + minGap;
+    const ctcAfterDpa = Math.max(0, preCreditCTC - (includeEarnestInCTC ? earnest : 0));
+
+    let remainingCC = Math.max(0, preCreditCC - seller - other);
+    const netBeforeEarnest = remainingDown + remainingCC + minGap;
+    const ctcNetCalc = Math.max(0, netBeforeEarnest - (includeEarnestInCTC ? earnest : 0));
+    // Round cash-to-close to whole dollars for stability
+    const ctcNet = Math.round(Math.max(dpa.minBorrower, ctcNetCalc));
+    const ctcBase = Math.max(0, baseDown + paddedCC);
+    const displayCC = paddedCC + minGap;
 
     const ctcManual = Math.max(0, toNumber(cashToCloseInput));
     const baseCap = Math.max(0, programCap.amount);
 
-    // Cap target uses Net CTC by default; manual override when Auto is OFF.
-    const capTarget = autoEstimateCTC ? ctcBase : (ctcManual || ctcBase);
+    // Cap uses the lesser of the Program Cap and Cash to Close.
+    const cashToClose = autoEstimateCTC ? ctcNet : ctcManual;
 
-    const preCredits = (seller + other) + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0);
+    const preCredits = seller + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0);
 
-    const capUsed = Math.min(baseCap, capTarget);
+    const capUsed = Math.min(baseCap, cashToClose);
 
     const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: preCredits });
     const { grossCommission, agentShare, ahaShare, allocatedAfc, allocatedAha, allocatedAgent, allowed, afcPlanned, ahaPlanned, agentPlanned } = alloc;
 
-    // Additional credits needed (seller/other/DPA toward cap) so agent allocation becomes $0
-    // Threshold: remainingNeed <= (afcPlanned + ahaPlanned)
-    // remainingNeed = capUsed - preCredits
-    const additionalCreditsToZeroAgent = Math.max(0, (Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0)) - (Number(preCredits)||0));
-
-    // Credits needed (seller/other/DPA toward cap) to reduce Agent contribution to $0:
+    // Credits needed (seller/DPA toward cap) to reduce Agent contribution to $0:
     // When remainingNeed <= afcPlanned + ahaPlanned, agent allocation falls to zero.
-    const creditsToZeroAgent = Math.max(0, (Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0)));
-    
+    // Round needed credits to whole dollars to prevent oscillation
+    const creditsToZeroAgent = Math.max(0, Math.round((Number(capUsed)||0) - ((Number(afcPlanned)||0) + (Number(ahaPlanned)||0))));
+
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
 
@@ -160,23 +179,70 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ahaAllocPct: price? allocatedAha/price : 0,
       agentAllocPct: price? allocatedAgent/price : 0,
       agentNet, ahaNet,
+      afcPlanned, ahaPlanned, agentPlanned,
       allowedBonusTotal: allowed, capUsed, bonusProgress,
       earnest, includeEarnestInCTC, dpaCountsTowardCap,
       buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
-
-      preCreditCTC, ctcNet, ctcBase, displayCC,
+      
       creditsToZeroAgent,
       downPayment: baseDown,
-      closingCosts: baseCC,
+      closingCosts: displayCC,
       seller, other,
       dpaProgram,
       dpaToDown: dpa.dpaToDown, dpaToCC: dpa.dpaToCC, dpaUnused: dpa.dpaUnused,
       dpaRequested: dpa.dpaRequested, dpaMaxByProgram: dpa.dpaMaxByProgram,
       dpaMinBorrower: dpa.minBorrower,
       ruleLabel: programCap.ruleLabel,
+      ctcAfterDpa,
+      ctcNet,
+      ctcBase,
     };
 
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  }, [priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+
+  useEffect(()=>{
+    if(!autoSellerCredits && !autoEstimateCTC) return;
+    const other = Math.max(0, toNumber(otherCreditsInput));
+    const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
+    const baseCap = Math.max(0, programCap.amount);
+    const planned = (data.afcPlanned||0) + (data.ahaPlanned||0);
+    const minBorrower = data.dpaMinBorrower || 0;
+
+    if(autoEstimateCTC){
+      const preNet = data.ctcAfterDpa;
+      const Cprime = Math.max(0, preNet - other);
+      const maxSeller = Math.max(0, preNet - minBorrower);
+
+      let sellerNeeded = Math.max(0, baseCap - planned - dpaCreds);
+      if(sellerNeeded > preNet - baseCap){
+        sellerNeeded = Math.max(0, (preNet - planned - dpaCreds) / 2);
+      }
+      sellerNeeded = Math.min(maxSeller, Math.round(sellerNeeded));
+
+      const sellerInputNum = Math.max(0, toNumber(sellerCreditsInput));
+      const sellerUsed = autoSellerCredits ? sellerNeeded : sellerInputNum;
+
+      const cashNet = Math.max(minBorrower, Cprime - sellerUsed);
+      const ctcNeeded = Math.round(cashNet);
+
+      if(autoSellerCredits && sellerUsed !== sellerInputNum){
+        setSellerCreditsInput(toCurrency(sellerUsed));
+      }
+      if(toNumber(cashToCloseInput) !== ctcNeeded){
+        setCashToCloseInput(toCurrency(ctcNeeded));
+      }
+    } else if(autoSellerCredits){
+      const cashManual = Math.max(0, toNumber(cashToCloseInput));
+      const capUsed = Math.min(baseCap, cashManual);
+      const needed = Math.max(0, Math.round(capUsed - planned - dpaCreds));
+      const maxSeller = Math.max(0, cashManual - minBorrower);
+      const sellerNeeded = Math.min(maxSeller, needed);
+      if(toNumber(sellerCreditsInput) !== sellerNeeded){
+        setSellerCreditsInput(toCurrency(sellerNeeded));
+      }
+    }
+  }, [autoSellerCredits, autoEstimateCTC, otherCreditsInput, sellerCreditsInput, cashToCloseInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.ctcAfterDpa, data.afcPlanned, data.ahaPlanned, programCap.amount, data.dpaMinBorrower]);
+
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
@@ -280,10 +346,6 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
                 }} onKeyDown={blurOnEnter} />
                 <div className="small">Defaults: CHFA $1,000; Essex $0 (editable).</div>
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                <label className="row"><input type="checkbox" checked={dpaAllowCC} onChange={e=>setDpaAllowCC(e.target.checked)} /> <span style={{marginLeft:8}}>Allow leftover to Closing Costs</span></label>
-                <label className="row"><input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} /> <span style={{marginLeft:8}}>Count DPA toward Program Cap (rare)</span></label>
-              </div>
             </div>
           </div>
 
@@ -295,7 +357,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
               <span>Auto-calc Seller Credits to zero Agent</span>
             </label>
           </div>
-          <input type="text" inputMode="numeric" value={sellerCreditsInput} readOnly={autoSellerCredits} onChange={e=>{
+          <input type="text" inputMode="numeric" value={sellerCreditsInput} onChange={e=>{
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setAutoSellerCredits(false);
             setSellerCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
@@ -307,44 +369,44 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setOtherCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
           }} onKeyDown={blurOnEnter} />
-          <div style={{height:12}} />
-          <label>Earnest Money</label>
-          <input type="text" inputMode="numeric" value={earnestMoneyInput} onChange={e=>{
-            const v=(e.target.value||'').replace(/[^0-9.]/g,'');
-            setEarnestMoneyInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
-          }} onKeyDown={blurOnEnter} />
+            <div style={{height:12}} />
+            <label>Earnest Money</label>
+            <input type="text" inputMode="numeric" value={earnestMoneyInput} onChange={e=>{
+              const v=(e.target.value||'').replace(/[^0-9.]/g,'');
+              setEarnestMoneyInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
+            }} onKeyDown={blurOnEnter} />
+            <div style={{height:12}} />
+            <label>Closing Cost Padding (%)</label>
+            <input type="text" inputMode="decimal" value={closingCostPadPctInput} onChange={e=>setClosingCostPadPctInput(e.target.value)} onKeyDown={blurOnEnter} />
+            <div className="small">Adds extra % buffer to closing costs.</div>
+
           <div style={{height:12}} />
           <div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
             <label className="row">
-              <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
-              <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
+
+              <input type="checkbox" checked={autoEstimateCTC} onChange={e=>setAutoEstimateCTC(e.target.checked)} />
+              <span style={{marginLeft:6}}>Auto-calc Cash to Close</span>
+            </label>
+            <label className="row">
+              <input type="checkbox" checked={dpaAllowCC} onChange={e=>setDpaAllowCC(e.target.checked)} />
+              <span style={{marginLeft:6}}>Allow leftover to Closing Costs</span>
             </label>
             <label className="row">
               <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
               <span style={{marginLeft:6}}>Count DPA toward Cap</span>
             </label>
+            <label className="row">
+              <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
+              <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
+            </label>
           </div>
 
-<div style={{height:12}} />
-<div className="row" style={{gap:8, alignItems:'center', flexWrap:'wrap'}}>
-  <div style={{flex:1}}>
-    <div className="row" style={{justifyContent:'space-between', alignItems:'center'}}>
-                <label>Cash to Close</label>
-                <label className="row" style={{gap:6}}>
-                  <input type="checkbox" checked={autoEstimateCTC} onChange={e=>setAutoEstimateCTC(e.target.checked)} />
-                  <span>Auto-calc Cash to Close</span>
-                </label>
-              </div>
-              <input type="text" inputMode="numeric" value={(autoEstimateCTC ? Number(data.ctcNet||0).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0}) : cashToCloseInput)} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
-              <div className="small">
-                Auto ON: uses computed Net CTC (includes DPA and credits); cap uses original CTC.
-                Auto OFF: your Cash to Close overrides the cap.
-              </div>
-            </div>
-            <label className="row card" style={{padding:'8px 10px', borderRadius:12}}>
-              <input type="checkbox" checked={autoEstimateCTC} onChange={e=>setAutoEstimateCTC(e.target.checked)} />
-              <span style={{marginLeft:8}}>Auto</span>
-            </label>
+          <div style={{height:12}} />
+          <label>Cash to Close</label>
+          <input type="text" inputMode="numeric" value={cashToCloseInput} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
+          <div className="small">
+            Auto ON: field auto-populates from net CTC after DPA and all credits.
+            Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
           </div>
         </div>
 
@@ -356,11 +418,11 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
           <div className="kv"><span className="label">Buyer Bonus Allowed</span>
             <span className="value">
               ${fmt(data.allowedBonusTotal)}
-              <span className="subtle" style={{marginLeft:8, color:'var(--text-subtle)'}}>({Math.round((data.bonusProgress||0)*100)}% of 1%)</span>
+              <span className="subtle" style={{marginLeft:8, color:'var(--text-subtle)'}}>({((data.bonusProgress||0)*100).toFixed(2)}% of 1%)</span>
             </span>
           </div>
           <div className="progress" style={{margin:'6px 0 8px 0'}}>
-            <div style={{width:`${Math.round((data.bonusProgress||0)*100)}%`}}/>
+            <div style={{width:`${(data.bonusProgress||0)*100}%`}}/>
           </div>
 
           <div className="kv"><span className="label">AFC Contribution (0.375%)</span><span className="value">${fmt(data.allocatedAfc)} ({pct(data.afcAllocPct)})</span></div>
@@ -393,7 +455,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
                 `Agent Share (50%): $${fmt(data.agentShare)}`,
                 `AHA Share (50%): $${fmt(data.ahaShare)}`,
                 ``,
-                `Buyer Bonus Allowed: $${fmt(data.allowedBonusTotal)} (${Math.round((data.bonusProgress||0)*100)}% of 1%)`,
+                `Buyer Bonus Allowed: $${fmt(data.allowedBonusTotal)} (${((data.bonusProgress||0)*100).toFixed(2)}% of 1%)`,
                 ` - AFC Contribution: $${fmt(data.allocatedAfc)} (${(data.afcAllocPct*100).toFixed(2)}%)`,
                 ` - AHA Contribution: $${fmt(data.allocatedAha)} (${(data.ahaAllocPct*100).toFixed(2)}%)`,
                 ` - Agent Contribution: $${fmt(data.allocatedAgent)} (${(data.agentAllocPct*100).toFixed(2)}%)`,
