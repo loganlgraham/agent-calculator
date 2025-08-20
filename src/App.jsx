@@ -111,8 +111,10 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ? toNumber(downAmtInput)
       : price * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
     const baseCC = price * (Math.max(0, Number(digitsOnly(closingCostPctInput)||"0"))/100);
+    const ccPadPct = 0; // closing cost padding as % of price
+    const paddedCC = baseCC + price * ccPadPct;
 
-    const dpa = computeDPA({ downPayment: baseDown, closingCosts: baseCC });
+    const dpa = computeDPA({ downPayment: baseDown, closingCosts: paddedCC });
 
     const remainingDown = dpaProgram !== "None" ? 0 : Math.max(0, baseDown - dpa.dpaToDown);
     let remainingCC = Math.max(0, baseCC - dpa.dpaToCC);
@@ -123,7 +125,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
 
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
     const ctcNet = Math.max(0, remainingDown + remainingCC - (includeEarnestInCTC ? earnest : 0));
-    const ctcBase = Math.max(0, baseDown + baseCC);
+    const ctcBase = Math.max(0, baseDown + paddedCC);
 
     const ctcManual = Math.max(0, toNumber(cashToCloseInput));
     const baseCap = Math.max(0, programCap.amount);
@@ -150,8 +152,9 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
 
+    const capConsumed = capUsed ?? (allowed + seller);
     const onePct = price * 0.01 || 1;
-    const bonusProgress = Math.max(0, Math.min(1, allowed / onePct));
+    const bonusProgress = Math.max(0, Math.min(1, capConsumed / onePct));
 
     return {
       price,
@@ -162,7 +165,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ahaAllocPct: price? allocatedAha/price : 0,
       agentAllocPct: price? allocatedAgent/price : 0,
       agentNet, ahaNet,
-      allowedBonusTotal: allowed, capUsed,
+      allowedBonusTotal: allowed, capUsed, bonusProgress,
       earnest, includeEarnestInCTC, dpaCountsTowardCap,
       buyerCreditPct: price? Math.max(0, Math.min(1, allowed/price)) : 0,
       
@@ -176,7 +179,7 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       dpaMinBorrower: dpa.minBorrower,
       ruleLabel: programCap.ruleLabel,
     };
-  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, earnestMoneyInput, includeEarnestInCTC, cashToCloseInput, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaMode, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
     setDpLastEdited('dollars');
@@ -309,17 +312,23 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setOtherCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
           }} onKeyDown={blurOnEnter} />
-<div style={{height:12}} />
-<div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
-  <label className="row">
-    <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
-    <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
-  </label>
-  <label className="row">
-    <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
-    <span style={{marginLeft:6}}>Count DPA toward Cap</span>
-  </label>
-</div>
+          <div style={{height:12}} />
+          <label>Earnest Money</label>
+          <input type="text" inputMode="numeric" value={earnestMoneyInput} onChange={e=>{
+            const v=(e.target.value||'').replace(/[^0-9.]/g,'');
+            setEarnestMoneyInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
+          }} onKeyDown={blurOnEnter} />
+          <div style={{height:12}} />
+          <div className="row" style={{gap:12, alignItems:'center', flexWrap:'wrap'}}>
+            <label className="row">
+              <input type="checkbox" checked={includeEarnestInCTC} onChange={e=>setIncludeEarnestInCTC(e.target.checked)} />
+              <span style={{marginLeft:6}}>Include Earnest Money in Net CTC</span>
+            </label>
+            <label className="row">
+              <input type="checkbox" checked={dpaCountsTowardCap} onChange={e=>setDpaCountsTowardCap(e.target.checked)} />
+              <span style={{marginLeft:6}}>Count DPA toward Cap</span>
+            </label>
+          </div>
 
 <div style={{height:12}} />
 <div className="row" style={{gap:8, alignItems:'center', flexWrap:'wrap'}}>
