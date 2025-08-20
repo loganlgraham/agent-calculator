@@ -79,6 +79,18 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
   const priceNum = useMemo(()=>toNumber(homePriceInput),[homePriceInput]);
   const dpaProgramMax = useMemo(()=> priceNum * (Math.max(0, Number(digitsOnly(dpaMaxPctInput)||"0"))/100), [priceNum, dpaMaxPctInput]);
 
+  // Auto-sync DPA request with down payment when within program limits
+  useEffect(()=>{
+    if(dpaProgram !== "None"){
+      const down = dpLastEdited==='dollars' && downAmtInput!==""
+        ? toNumber(downAmtInput)
+        : priceNum * (Math.max(0, Number(digitsOnly(downPctInput)||"0"))/100);
+      const target = Math.min(down, dpaProgramMax);
+      const formatted = target? toCurrency(target) : "$0";
+      if(dpaAmountInput !== formatted) setDpaAmountInput(formatted);
+    }
+  },[dpaProgram, dpLastEdited, downAmtInput, downPctInput, priceNum, dpaProgramMax, dpaAmountInput]);
+
   useEffect(()=>{
     if(!priceNum) { if(dpLastEdited==='percent') setDownAmtInput(""); else setDownPctInput("0"); return; }
     if(dpLastEdited==='percent'){
@@ -166,9 +178,8 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const agentNet = agentShare - allocatedAgent;
     const ahaNet = ahaShare - allocatedAha;
 
-    const capConsumed = capUsed ?? (allowed + seller);
     const onePct = price * 0.01 || 1;
-    const bonusProgress = Math.max(0, Math.min(1, capConsumed / onePct));
+    const bonusProgress = Math.max(0, Math.min(1, allowed / onePct));
 
     return {
       price,
@@ -197,8 +208,24 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
       ctcNet,
       ctcBase,
     };
-    
-    },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+  },[priceNum, commissionPctInput, sellerCreditsInput, otherCreditsInput, cashToCloseInput, earnestMoneyInput, includeEarnestInCTC, programCap.amount, autoEstimateCTC, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, loanType, occupancy]);
+
+  useEffect(()=>{
+    if(autoSellerCredits){
+      const other = Math.max(0, toNumber(otherCreditsInput));
+      const dpaCreds = dpaCountsTowardCap ? (data.dpaToDown + data.dpaToCC) : 0;
+      const needed = Math.max(0, data.creditsToZeroAgent - other - dpaCreds);
+      const formatted = toCurrency(needed);
+      if(sellerCreditsInput!==formatted) setSellerCreditsInput(formatted);
+    }
+  },[autoSellerCredits, otherCreditsInput, dpaCountsTowardCap, data.dpaToDown, data.dpaToCC, data.creditsToZeroAgent, sellerCreditsInput]);
+
+  useEffect(()=>{
+    if(autoEstimateCTC){
+      const formatted = toCurrency(data.ctcAfterDpa);
+      if(cashToCloseInput!==formatted) setCashToCloseInput(formatted);
+    }
+  },[autoEstimateCTC, data.ctcAfterDpa, cashToCloseInput]);
 
 const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e.target.value); };
   const handleDownAmtChange = (e)=>{
@@ -314,7 +341,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
               <span>Auto-calc Seller Credits to zero Agent</span>
             </label>
           </div>
-          <input type="text" inputMode="numeric" value={sellerCreditsInput} onChange={e=>{
+          <input type="text" inputMode="numeric" value={sellerCreditsInput} readOnly={autoSellerCredits} onChange={e=>{
             const v=(e.target.value||'').replace(/[^0-9.]/g,'');
             setAutoSellerCredits(false);
             setSellerCreditsInput(v===''? '' : Number(v).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}));
@@ -360,7 +387,7 @@ const handleDownPctChange = (e)=>{ setDpLastEdited('percent'); setDownPctInput(e
 
           <div style={{height:12}} />
           <label>Cash to Close</label>
-          <input type="text" inputMode="numeric" value={cashToCloseInput} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
+          <input type="text" inputMode="numeric" value={cashToCloseInput} readOnly={autoEstimateCTC} onChange={e=>{ const v=(e.target.value||"").replace(/[^0-9.]/g,""); setAutoEstimateCTC(false); setCashToCloseInput(v===""? "" : Number(v).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:0})); }} onKeyDown={blurOnEnter} />
           <div className="small">
             Auto ON: field auto-populates from net CTC after DPA and all credits.
             Auto OFF: manually enter Cash to Close; cap uses the lesser of Program Cap and this amount.
