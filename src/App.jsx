@@ -147,17 +147,13 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const seller = Math.max(0, toNumber(sellerCreditsInput));
     const other = Math.max(0, toNumber(otherCreditsInput));
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
-    const minGap = Math.max(0, dpa.minBorrower - (remainingDown + preCreditCC));
-    const preCreditCTC = remainingDown + preCreditCC + minGap;
-    const ctcAfterDpa = Math.max(0, preCreditCTC - earnest);
 
-    let remainingCC = Math.max(0, preCreditCC - seller - other);
-    const netBeforeEarnest = remainingDown + remainingCC + minGap;
-    const ctcNetCalc = Math.max(0, netBeforeEarnest - earnest);
+    const ctcAfterDpa = Math.max(0, remainingDown + preCreditCC - earnest);
+    const ctcNetCalc = Math.max(0, remainingDown + preCreditCC - seller - other - earnest);
     // Round cash-to-close to whole dollars for stability
     const ctcNet = Math.round(Math.max(dpa.minBorrower, ctcNetCalc));
     const ctcBase = Math.max(0, baseDown + paddedCC);
-    const displayCC = paddedCC + minGap;
+    const displayCC = paddedCC;
 
     const ctcManual = Math.max(0, toNumber(cashToCloseInput));
     const baseCap = Math.max(0, programCap.amount);
@@ -233,34 +229,38 @@ dark? r.classList.add('dark') : r.classList.remove('dark'); },[dark]);
     const preCreditCC = Math.max(0, paddedCC - dpa.dpaToCC);
     const other = Math.max(0, toNumber(otherCreditsInput));
     const earnest = Math.max(0, toNumber(earnestMoneyInput));
-    const minGap = Math.max(0, dpa.minBorrower - (remainingDown + preCreditCC));
+    const otherForCap = other + (dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0);
 
-    const dpaCapCredits = dpaCountsTowardCap ? (dpa.dpaToDown + dpa.dpaToCC) : 0;
     const baseCap = Math.max(0, programCap.amount);
+    const minBorrower = dpa.minBorrower;
+
+    const baseCTCBeforeSeller = remainingDown + preCreditCC - other - earnest;
+
     const cashManual = Math.max(0, toNumber(cashToCloseInput));
 
     if(autoEstimateCTC){
-      const remainingCCNoSeller = Math.max(0, preCreditCC - other);
-      const netBeforeEarnest0 = remainingDown + remainingCCNoSeller + minGap;
-      const ctc0 = Math.round(Math.max(dpa.minBorrower, netBeforeEarnest0 - earnest));
-      const capUsed0 = Math.min(baseCap, ctc0);
-      const capForAgent0 = Math.min(capUsed0, price * 0.01);
-      const creditsToZeroAgent = Math.max(0, Math.round(capForAgent0 - ((price*0.00375) + (price*0.00375))));
-      const seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
-      const remainingCCFinal = Math.max(0, preCreditCC - seller - other);
-      const netBeforeEarnestFinal = remainingDown + remainingCCFinal + minGap;
-      const ctc = Math.round(Math.max(dpa.minBorrower, netBeforeEarnestFinal - earnest));
-      return { seller: Math.round(seller), ctc };
+      const sellerManual = Math.max(0, toNumber(sellerCreditsInput));
+      const seller = autoSellerCredits ? (()=>{
+        let lo = 0, hi = Math.max(0, baseCTCBeforeSeller);
+        while(lo < hi){
+          const mid = Math.floor((lo + hi) / 2);
+          const ctcGuess = Math.max(minBorrower, baseCTCBeforeSeller - mid);
+          const capUsed = Math.min(baseCap, ctcGuess);
+          const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: otherForCap + mid });
+          if(alloc.allocatedAgent <= 0){ hi = mid; } else { lo = mid + 1; }
+        }
+        return lo;
+      })() : sellerManual;
+      const ctc = Math.max(minBorrower, baseCTCBeforeSeller - seller);
+      return { seller: Math.round(seller), ctc: Math.round(ctc) };
     } else {
-      const cashToClose = cashManual;
-      const capUsed = Math.min(baseCap, cashToClose);
-      const alloc = allocation({ price, commissionRate: commRate, capAmount: capUsed, sellerCredits: other + dpaCapCredits });
+      const capUsed = Math.min(baseCap, cashManual);
       const capForAgent = Math.min(capUsed, price * 0.01);
-      const creditsToZeroAgent = Math.max(0, Math.round(capForAgent - ((Number(alloc.afcPlanned)||0) + (Number(alloc.ahaPlanned)||0))));
-      const seller = Math.max(0, creditsToZeroAgent - (other + dpaCapCredits));
+      const creditsNeeded = Math.max(0, Math.round(capForAgent - (price * 0.0075)));
+      const seller = autoSellerCredits ? Math.max(0, creditsNeeded - otherForCap) : Math.max(0, toNumber(sellerCreditsInput));
       return { seller: Math.round(seller), ctc: cashManual };
     }
-  },[autoEstimateCTC, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, programCap.amount, cashToCloseInput]);
+  },[autoEstimateCTC, autoSellerCredits, priceNum, commissionPctInput, downPctInput, downAmtInput, dpLastEdited, closingCostPctInput, closingCostPadPctInput, dpaProgram, dpaAmountInput, dpaMaxPctInput, dpaMinBorrowerInput, dpaAllowCC, dpaCountsTowardCap, otherCreditsInput, earnestMoneyInput, programCap.amount, sellerCreditsInput, cashToCloseInput]);
 
   useEffect(()=>{
     if(autoSellerCredits){
