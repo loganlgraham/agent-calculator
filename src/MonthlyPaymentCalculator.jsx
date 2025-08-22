@@ -122,8 +122,8 @@ export default function MonthlyPaymentCalculator(){
   const [price, setPrice] = useState(500000);
   const [priceModePayment, setPriceModePayment] = useState(false);
   const [targetMonthly, setTargetMonthly] = useState(3000);
-  const [downModePct, setDownModePct] = useState(false);
-  const [downInput, setDownInput] = useState(50000);
+  const [downModePct, setDownModePct] = useState(true);
+  const [downInput, setDownInput] = useState(10);
   const [rate, setRate] = useState(6.75);
   const [years, setYears] = useState(30);
   const [program, setProgram] = useState("Conventional");
@@ -136,6 +136,12 @@ export default function MonthlyPaymentCalculator(){
 
   const approxMonthlyTax = useMemo(() => taxModePct ? ((price * (Number(taxInput) / 100)) / 12) : ((Number(taxInput) || 0) / 12), [taxModePct, taxInput, price]);
   const approxMonthlyIns = useMemo(() => (Number(insYr) || 0) / 12, [insYr]);
+
+  useEffect(() => {
+    const defaults = { Conventional: 10, FHA: 3.5, VA: 0 };
+    setDownModePct(true);
+    setDownInput(defaults[program] ?? 0);
+  }, [program]);
 
   const [calc, setCalc] = useState({
     loanAmount: 0,
@@ -190,25 +196,20 @@ export default function MonthlyPaymentCalculator(){
     return high;
   };
 
-  const compute = () => computeForPrice(price);
-
-  const calculate = () => {
+  useEffect(() => {
     if (priceModePayment) {
       const solvedPrice = priceFromPayment(targetMonthly);
-      setPrice(solvedPrice);
+      if (Math.abs(solvedPrice - price) > 1) {
+        setPrice(solvedPrice);
+      }
       setCalc(computeForPrice(solvedPrice));
     } else {
-      setCalc(compute());
+      setCalc(computeForPrice(price));
     }
-  };
-
-  useEffect(() => {
-    calculate();
-  }, []);
+  }, [price, targetMonthly, priceModePayment, downModePct, downInput, rate, years, program, taxModePct, taxInput, insYr, hoa]);
 
   const copySummary = async () => {
-    const c = compute();
-    setCalc(c);
+    const c = calc;
     const summary = [
       `Program: ${program}`,
       `Price: ${fmtCurrency(price)} | Down: ${fmtCurrency(downDollar)} (${fmtNumber(downPct, 1)}%)`,
@@ -239,7 +240,16 @@ export default function MonthlyPaymentCalculator(){
               <div className="row" style={{marginTop:6}}>
                 <button
                   className={`toggle ${priceModePayment ? 'active' : ''}`}
-                  onClick={() => setPriceModePayment(m => !m)}
+                  onClick={() => {
+                    const c = computeForPrice(price);
+                    setCalc(c);
+                    if (!priceModePayment) {
+                      setTargetMonthly(c.total);
+                    } else {
+                      setPrice(c.price);
+                    }
+                    setPriceModePayment(m => !m);
+                  }}
                 >
                   {priceModePayment ? 'Use Price' : 'Use Payment'}
                 </button>
@@ -332,9 +342,6 @@ export default function MonthlyPaymentCalculator(){
               <CurrencyInput value={hoa} onChange={setHoa} placeholder="$" />
             </div>
           </div>
-        <div className="row" style={{marginTop:16}}>
-          <button className="btn" onClick={calculate}>Calculate</button>
-        </div>
       </div>
 
       <div className="card" style={{marginTop:16}}>
