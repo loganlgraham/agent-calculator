@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import MonthlyPaymentCalculator from "./MonthlyPaymentCalculator.jsx";
 
 export default function App(){
-  const [dark, setDark] = useState(false);
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const [dark, setDark] = useState(prefersDark);
 
   useEffect(()=>{
     const r = document.documentElement;

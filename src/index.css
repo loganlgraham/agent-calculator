@@ -1,6 +1,7 @@
 
 :root{--brand:#16A34A;--brand-dark:#15803D;--brand-light:#4ADE80;--text:#111827;--text-subtle:#374151;--surface:#fff;--surface-alt:#F0FDF4;--border:#16A34A40}
-*{box-sizing:border-box}html,body,#root{height:100%;margin:0}
+*{box-sizing:border-box}
+html,body,#root{min-height:100%;margin:0}
 body{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';background:linear-gradient(180deg,#F6FBF8 0%,#fff 60%);color:var(--text)}
 .app{max-width:1080px;margin:0 auto;padding:24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 24px rgba(0,0,0,.03)}
