@@ -1,10 +1,10 @@
 
-:root{--brand:#4EA66D;--brand-dark:#3E8B59;--brand-light:#76BF90;--text:#111827;--text-subtle:#374151;--surface:#fff;--surface-alt:#F6FBF8;--border:#4EA66D40}
+:root{--brand:#16A34A;--brand-dark:#15803D;--brand-light:#4ADE80;--text:#111827;--text-subtle:#374151;--surface:#fff;--surface-alt:#F0FDF4;--border:#16A34A40}
 *{box-sizing:border-box}html,body,#root{height:100%;margin:0}
 body{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';background:linear-gradient(180deg,#F6FBF8 0%,#fff 60%);color:var(--text)}
 .app{max-width:1080px;margin:0 auto;padding:24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 24px rgba(0,0,0,.03)}
-.header{border-radius:24px;padding:24px;color:#fff;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-light) 55%,var(--brand-dark) 100%);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.header{border-radius:16px;padding:16px;color:#fff;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-light) 55%,var(--brand-dark) 100%);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
 .h1{margin:0,font-size:24px;font-weight:800}.subtle{color:rgba(255,255,255,.9);font-size:13px;margin-top:6px}
 .grid{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:860px){.grid{grid-template-columns:1fr 1fr}}
 label{font-size:13px;color:var(--text-subtle);margin-bottom:6px;display:block}
@@ -44,3 +44,7 @@ input[type="text"]:focus,select:focus,textarea:focus{border-color:var(--brand);b
 .dark .kvpill{ background:#12301F; border-color:#53B27B; }
 .dark .kvpill .kicker{ color:#DDF7E9; }
 .dark .kvpill .value{ color:#FFFFFF; font-weight:700; opacity:1; }
+.toggle{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt);font-size:12px;cursor:pointer}
+.toggle.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.dark .toggle{background:#12301F;border-color:#53B27B;color:#DDF7E9}
+.dark .toggle.active{background:var(--brand-dark);border-color:var(--brand-dark)}

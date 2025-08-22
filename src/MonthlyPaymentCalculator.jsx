@@ -129,48 +129,65 @@ export default function MonthlyPaymentCalculator(){
   const [taxInput, setTaxInput] = useState(0.60);
   const [insYr, setInsYr] = useState(1200);
   const [hoa, setHoa] = useState(0);
-
   const downDollar = useMemo(() => (downModePct ? (price * (Number(downInput) / 100)) : Number(downInput) || 0), [downModePct, downInput, price]);
   const downPct = useMemo(() => (price > 0 ? (downDollar / price) * 100 : 0), [downDollar, price]);
 
-  const baseLoan = Math.max(price - downDollar, 0);
+  const approxMonthlyTax = useMemo(() => taxModePct ? ((price * (Number(taxInput) / 100)) / 12) : ((Number(taxInput) || 0) / 12), [taxModePct, taxInput, price]);
+  const approxMonthlyIns = useMemo(() => (Number(insYr) || 0) / 12, [insYr]);
 
-  const { financedFee, miMonthly } = useMemo(() => {
+  const [calc, setCalc] = useState({
+    loanAmount: 0,
+    pi: 0,
+    miMonthly: 0,
+    monthlyTax: 0,
+    monthlyIns: 0,
+    total: 0,
+    ltvDisplay: 0,
+  });
+
+  const compute = () => {
+    const baseLoan = Math.max(price - downDollar, 0);
+    let financedFee = 0;
+    let miMonthly = 0;
     if (program === "Conventional") {
       const ltv = price > 0 ? baseLoan / price : 0;
       const annual = convPmiAnnualRate(ltv);
-      const mi = (annual * baseLoan) / 12;
-      return { financedFee: 0, miMonthly: mi };
-    }
-    if (program === "FHA") {
+      miMonthly = (annual * baseLoan) / 12;
+    } else if (program === "FHA") {
       const ufmip = 0.0175 * baseLoan;
+      financedFee = ufmip;
       const annual = fhaMipAnnualRate();
-      const mi = (annual * baseLoan) / 12;
-      return { financedFee: ufmip, miMonthly: mi };
+      miMonthly = (annual * baseLoan) / 12;
+    } else if (program === "VA") {
+      financedFee = vaFundingFeeRate(downPct) * baseLoan;
     }
-    if (program === "VA") {
-      const ff = vaFundingFeeRate(downPct) * baseLoan;
-      return { financedFee: ff, miMonthly: 0 };
-    }
-    return { financedFee: 0, miMonthly: 0 };
-  }, [program, baseLoan, downPct, price]);
+    const loanAmount = baseLoan + financedFee;
+    const pi = monthlyPI(loanAmount, rate, years);
+    const monthlyTax = approxMonthlyTax;
+    const monthlyIns = approxMonthlyIns;
+    const total = pi + miMonthly + monthlyTax + monthlyIns + (Number(hoa) || 0);
+    const ltvDisplay = price > 0 ? (loanAmount / price) * 100 : 0;
+    return { loanAmount, pi, miMonthly, monthlyTax, monthlyIns, total, ltvDisplay };
+  };
 
-  const loanAmount = baseLoan + financedFee;
-  const pi = monthlyPI(loanAmount, rate, years);
-  const monthlyTax = taxModePct ? ((price * (taxInput / 100)) / 12) : ((taxInput || 0) / 12);
-  const monthlyIns = (insYr || 0) / 12;
-  const total = pi + miMonthly + monthlyTax + monthlyIns + (hoa || 0);
+  const calculate = () => {
+    setCalc(compute());
+  };
 
-  const ltvDisplay = price > 0 ? (loanAmount / price) * 100 : 0;
+  useEffect(() => {
+    calculate();
+  }, []);
 
   const copySummary = async () => {
+    const c = compute();
+    setCalc(c);
     const summary = [
       `Program: ${program}`,
       `Price: ${fmtCurrency(price)} | Down: ${fmtCurrency(downDollar)} (${fmtNumber(downPct, 1)}%)`,
-      `Loan: ${fmtCurrency(loanAmount)} | Rate: ${fmtNumber(rate, 3)}% | Term: ${years}y`,
-      `P&I: ${fmtCurrency(pi)} | MI/MIP: ${fmtCurrency(miMonthly)}`,
-      `Taxes: ${fmtCurrency(monthlyTax)} | Ins: ${fmtCurrency(monthlyIns)} | HOA: ${fmtCurrency(Number(hoa) || 0)}`,
-      `EST. Total Monthly: ${fmtCurrency(total)}`,
+      `Loan: ${fmtCurrency(c.loanAmount)} | Rate: ${fmtNumber(rate, 3)}% | Term: ${years}y`,
+      `P&I: ${fmtCurrency(c.pi)} | MI/MIP: ${fmtCurrency(c.miMonthly)}`,
+      `Taxes: ${fmtCurrency(c.monthlyTax)} | Ins: ${fmtCurrency(c.monthlyIns)} | HOA: ${fmtCurrency(Number(hoa) || 0)}`,
+      `EST. Total Monthly: ${fmtCurrency(c.total)}`,
     ].join("\n");
     try {
       await navigator.clipboard.writeText(summary);
@@ -182,10 +199,6 @@ export default function MonthlyPaymentCalculator(){
 
   return (
     <>
-      <div className="card" style={{marginBottom:16}}>
-        <div className="h1" style={{fontSize:24}}>Agent-Friendly Monthly Payment Estimator</div>
-        <div className="subtle" style={{marginTop:6}}>Quick, approximate numbers for conversations — not a loan estimate.</div>
-      </div>
       <section className="grid">
         <div className="card">
           <div className="grid" style={{gridTemplateColumns:'1fr 1fr', gap:12}}>
@@ -204,13 +217,12 @@ export default function MonthlyPaymentCalculator(){
             <div>
               <label>Down Payment ({downModePct ? "%" : "$"})</label>
               {downModePct ? (
-                <input type="number" value={downInput} onChange={(e)=>setDownInput(Number(e.target.value || 0))} />
+                <NumberInput value={downInput} onChange={setDownInput} placeholder="%" decimals={2} />
               ) : (
                 <CurrencyInput value={Number(downInput)||0} onChange={(v)=>setDownInput(v)} placeholder="$" />
               )}
               <div className="row" style={{marginTop:6}}>
-                <span className="small">Use %</span>
-                <input type="checkbox" checked={downModePct} onChange={(e)=>setDownModePct(e.target.checked)} />
+                <button className={`toggle ${downModePct ? 'active' : ''}`} onClick={()=>setDownModePct(p=>!p)}>Use %</button>
               </div>
               <div className="small">= {fmtCurrency(downDollar)} ({fmtNumber(downPct,1)}%)</div>
             </div>
@@ -239,20 +251,22 @@ export default function MonthlyPaymentCalculator(){
                 <CurrencyInput value={taxInput} onChange={setTaxInput} placeholder="$" />
               )}
               <div className="row" style={{marginTop:6}}>
-                <span className="small">Use %</span>
-                <input type="checkbox" checked={taxModePct} onChange={(e)=>setTaxModePct(e.target.checked)} />
+                <button className={`toggle ${taxModePct ? 'active' : ''}`} onClick={()=>setTaxModePct(p=>!p)}>Use %</button>
               </div>
-              <div className="small">≈ {fmtCurrency(monthlyTax)} / mo</div>
+              <div className="small">≈ {fmtCurrency(approxMonthlyTax)} / mo</div>
             </div>
             <div>
               <label>Homeowners Insurance ($ / year)</label>
               <CurrencyInput value={insYr} onChange={setInsYr} placeholder="$" />
-              <div className="small">≈ {fmtCurrency(monthlyIns)} / mo</div>
+              <div className="small">≈ {fmtCurrency(approxMonthlyIns)} / mo</div>
             </div>
             <div>
               <label>HOA Dues ($ / month)</label>
               <CurrencyInput value={hoa} onChange={setHoa} placeholder="$" />
             </div>
+          </div>
+          <div className="row" style={{marginTop:16}}>
+            <button className="btn" onClick={calculate}>Calculate</button>
           </div>
         </div>
       </section>
@@ -262,17 +276,17 @@ export default function MonthlyPaymentCalculator(){
           <div className="grid" style={{gridTemplateColumns:'1fr 1fr 1fr', gap:12}}>
             <div>
               <div className="small">Loan Amount</div>
-              <div className="h1" style={{fontSize:24}}>{fmtCurrency(loanAmount)}</div>
-              <div className="small">LTV ~ {fmtNumber(ltvDisplay,1)}%</div>
+              <div className="h1" style={{fontSize:24}}>{fmtCurrency(calc.loanAmount)}</div>
+              <div className="small">LTV ~ {fmtNumber(calc.ltvDisplay,1)}%</div>
             </div>
             <div>
               <div className="small">Principal & Interest</div>
-              <div className="h1" style={{fontSize:24}}>{fmtCurrency(pi)}</div>
+              <div className="h1" style={{fontSize:24}}>{fmtCurrency(calc.pi)}</div>
               <div className="small">Rate {fmtNumber(rate,3)}% | {years} years</div>
             </div>
             <div>
               <div className="small">MI/MIP (if any)</div>
-              <div className="h1" style={{fontSize:24}}>{fmtCurrency(miMonthly)}</div>
+              <div className="h1" style={{fontSize:24}}>{fmtCurrency(calc.miMonthly)}</div>
               <div className="small">Program: {program}</div>
             </div>
           </div>
@@ -284,11 +298,11 @@ export default function MonthlyPaymentCalculator(){
           <div className="grid" style={{gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:12}}>
             <div>
               <div className="small">Taxes</div>
-              <div className="h1" style={{fontSize:20}}>{fmtCurrency(monthlyTax)}</div>
+              <div className="h1" style={{fontSize:20}}>{fmtCurrency(calc.monthlyTax)}</div>
             </div>
             <div>
               <div className="small">Insurance</div>
-              <div className="h1" style={{fontSize:20}}>{fmtCurrency(monthlyIns)}</div>
+              <div className="h1" style={{fontSize:20}}>{fmtCurrency(calc.monthlyIns)}</div>
             </div>
             <div>
               <div className="small">HOA</div>
@@ -296,7 +310,7 @@ export default function MonthlyPaymentCalculator(){
             </div>
             <div>
               <div className="small">Est. Total Monthly</div>
-              <div className="h1" style={{fontSize:28}}>{fmtCurrency(total)}</div>
+              <div className="h1" style={{fontSize:28}}>{fmtCurrency(calc.total)}</div>
             </div>
           </div>
         </div>
