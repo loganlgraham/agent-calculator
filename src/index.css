@@ -48,3 +48,7 @@ input[type="text"]:focus,select:focus,textarea:focus{border-color:var(--brand);b
 .toggle.active{background:var(--brand);color:#fff;border-color:var(--brand)}
 .dark .toggle{background:#12301F;border-color:#53B27B;color:#DDF7E9}
 .dark .toggle.active{background:var(--brand-dark);border-color:var(--brand-dark)}
+
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.summary-grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.summary-grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}

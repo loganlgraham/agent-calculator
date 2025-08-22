@@ -199,9 +199,8 @@ export default function MonthlyPaymentCalculator(){
 
   return (
     <>
-      <section className="grid">
-        <div className="card">
-          <div className="grid" style={{gridTemplateColumns:'1fr 1fr', gap:12}}>
+      <div className="card">
+        <div className="form-grid">
             <div>
               <label>Purchase Price</label>
               <CurrencyInput value={price} onChange={setPrice} placeholder="$" />
@@ -222,7 +221,21 @@ export default function MonthlyPaymentCalculator(){
                 <CurrencyInput value={Number(downInput)||0} onChange={(v)=>setDownInput(v)} placeholder="$" />
               )}
               <div className="row" style={{marginTop:6}}>
-                <button className={`toggle ${downModePct ? 'active' : ''}`} onClick={()=>setDownModePct(p=>!p)}>Use %</button>
+                <button
+                  className={`toggle ${downModePct ? 'active' : ''}`}
+                  onClick={() => {
+                    if (downModePct) {
+                      const dollars = price * (Number(downInput) / 100);
+                      setDownInput(Math.round(dollars));
+                    } else {
+                      const pct = price > 0 ? (Number(downInput) / price) * 100 : 0;
+                      setDownInput(Number(pct.toFixed(2)));
+                    }
+                    setDownModePct(m => !m);
+                  }}
+                >
+                  {downModePct ? 'Use $' : 'Use %'}
+                </button>
               </div>
               <div className="small">= {fmtCurrency(downDollar)} ({fmtNumber(downPct,1)}%)</div>
             </div>
@@ -251,7 +264,21 @@ export default function MonthlyPaymentCalculator(){
                 <CurrencyInput value={taxInput} onChange={setTaxInput} placeholder="$" />
               )}
               <div className="row" style={{marginTop:6}}>
-                <button className={`toggle ${taxModePct ? 'active' : ''}`} onClick={()=>setTaxModePct(p=>!p)}>Use %</button>
+                <button
+                  className={`toggle ${taxModePct ? 'active' : ''}`}
+                  onClick={() => {
+                    if (taxModePct) {
+                      const dollars = price * (Number(taxInput) / 100);
+                      setTaxInput(Math.round(dollars));
+                    } else {
+                      const pct = price > 0 ? (Number(taxInput) / price) * 100 : 0;
+                      setTaxInput(Number(pct.toFixed(2)));
+                    }
+                    setTaxModePct(m => !m);
+                  }}
+                >
+                  {taxModePct ? 'Use $' : 'Use %'}
+                </button>
               </div>
               <div className="small">≈ {fmtCurrency(approxMonthlyTax)} / mo</div>
             </div>
@@ -265,15 +292,13 @@ export default function MonthlyPaymentCalculator(){
               <CurrencyInput value={hoa} onChange={setHoa} placeholder="$" />
             </div>
           </div>
-          <div className="row" style={{marginTop:16}}>
-            <button className="btn" onClick={calculate}>Calculate</button>
-          </div>
+        <div className="row" style={{marginTop:16}}>
+          <button className="btn" onClick={calculate}>Calculate</button>
         </div>
-      </section>
+      </div>
 
-      <section className="grid" style={{marginTop:16}}>
-        <div className="card">
-          <div className="grid" style={{gridTemplateColumns:'1fr 1fr 1fr', gap:12}}>
+      <div className="card" style={{marginTop:16}}>
+        <div className="summary-grid3">
             <div>
               <div className="small">Loan Amount</div>
               <div className="h1" style={{fontSize:24}}>{fmtCurrency(calc.loanAmount)}</div>
@@ -289,13 +314,11 @@ export default function MonthlyPaymentCalculator(){
               <div className="h1" style={{fontSize:24}}>{fmtCurrency(calc.miMonthly)}</div>
               <div className="small">Program: {program}</div>
             </div>
-          </div>
         </div>
-      </section>
+      </div>
 
-      <section className="grid" style={{marginTop:16}}>
-        <div className="card">
-          <div className="grid" style={{gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:12}}>
+      <div className="card" style={{marginTop:16}}>
+        <div className="summary-grid4">
             <div>
               <div className="small">Taxes</div>
               <div className="h1" style={{fontSize:20}}>{fmtCurrency(calc.monthlyTax)}</div>
@@ -312,9 +335,8 @@ export default function MonthlyPaymentCalculator(){
               <div className="small">Est. Total Monthly</div>
               <div className="h1" style={{fontSize:28}}>{fmtCurrency(calc.total)}</div>
             </div>
-          </div>
         </div>
-      </section>
+      </div>
 
       <div className="row" style={{marginTop:16, flexWrap:'wrap', gap:12}}>
         <button className="btn" onClick={copySummary}>Copy summary</button>
