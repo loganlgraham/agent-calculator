@@ -73,6 +73,51 @@ function CurrencyInput({ value, onChange, placeholder }) {
   );
 }
 
+function NumberInput({ value, onChange, placeholder, decimals = 2 }) {
+  const [focused, setFocused] = useState(false);
+  const [display, setDisplay] = useState("");
+
+  useEffect(() => {
+    if (!focused) {
+      setDisplay(value === 0 || value ? fmtNumber(value, decimals) : "");
+    }
+  }, [value, focused, decimals]);
+
+  const handleFocus = (e) => {
+    setFocused(true);
+    setDisplay(value === 0 || value ? String(value) : "");
+    requestAnimationFrame(() => {
+      try {
+        e.target.select();
+      } catch {}
+    });
+  };
+
+  const handleChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9.]/g, "");
+    setDisplay(raw);
+    const num = raw === "" ? 0 : Number(raw);
+    onChange(num);
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    setDisplay(value === 0 || value ? fmtNumber(value, decimals) : "");
+  };
+
+  return (
+    <input
+      type="text"
+      value={display}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      inputMode="decimal"
+    />
+  );
+}
+
 export default function MonthlyPaymentCalculator(){
   const [price, setPrice] = useState(500000);
   const [downModePct, setDownModePct] = useState(false);
@@ -112,9 +157,9 @@ export default function MonthlyPaymentCalculator(){
 
   const loanAmount = baseLoan + financedFee;
   const pi = monthlyPI(loanAmount, rate, years);
-  const monthlyTax = taxModePct ? ((price * (Number(taxInput) / 100)) / 12) : ((Number(taxInput) || 0) / 12);
-  const monthlyIns = (Number(insYr) || 0) / 12;
-  const total = pi + miMonthly + monthlyTax + monthlyIns + (Number(hoa) || 0);
+  const monthlyTax = taxModePct ? ((price * (taxInput / 100)) / 12) : ((taxInput || 0) / 12);
+  const monthlyIns = (insYr || 0) / 12;
+  const total = pi + miMonthly + monthlyTax + monthlyIns + (hoa || 0);
 
   const ltvDisplay = price > 0 ? (loanAmount / price) * 100 : 0;
 
@@ -171,7 +216,7 @@ export default function MonthlyPaymentCalculator(){
             </div>
             <div>
               <label>Interest Rate (APR)</label>
-              <input type="number" step="0.001" value={rate} onChange={(e)=>setRate(Number(e.target.value || 0))} />
+              <NumberInput value={rate} onChange={setRate} placeholder="%" decimals={3} />
               <div className="row" style={{marginTop:6}}>
                 {[6.5,6.75,7.0].map((r)=>(
                   <button key={r} className="btn" style={{padding:'6px 8px'}} onClick={()=>setRate(r)}>{r}%</button>
@@ -188,7 +233,11 @@ export default function MonthlyPaymentCalculator(){
             </div>
             <div>
               <label>Property Taxes ({taxModePct ? "% of price" : "$ / year"})</label>
-              <input type="number" step={taxModePct ? 0.01 : 50} value={taxInput} onChange={(e)=>setTaxInput(e.target.value)} />
+              {taxModePct ? (
+                <NumberInput value={taxInput} onChange={setTaxInput} placeholder="%" decimals={2} />
+              ) : (
+                <CurrencyInput value={taxInput} onChange={setTaxInput} placeholder="$" />
+              )}
               <div className="row" style={{marginTop:6}}>
                 <span className="small">Use %</span>
                 <input type="checkbox" checked={taxModePct} onChange={(e)=>setTaxModePct(e.target.checked)} />
@@ -197,12 +246,12 @@ export default function MonthlyPaymentCalculator(){
             </div>
             <div>
               <label>Homeowners Insurance ($ / year)</label>
-              <input type="number" value={insYr} onChange={(e)=>setInsYr(Number(e.target.value || 0))} />
+              <CurrencyInput value={insYr} onChange={setInsYr} placeholder="$" />
               <div className="small">≈ {fmtCurrency(monthlyIns)} / mo</div>
             </div>
             <div>
               <label>HOA Dues ($ / month)</label>
-              <input type="number" value={hoa} onChange={(e)=>setHoa(Number(e.target.value || 0))} />
+              <CurrencyInput value={hoa} onChange={setHoa} placeholder="$" />
             </div>
           </div>
         </div>
