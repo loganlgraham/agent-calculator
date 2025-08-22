@@ -2,7 +2,8 @@
 :root{--brand:#16A34A;--brand-dark:#15803D;--brand-light:#4ADE80;--text:#111827;--text-subtle:#374151;--surface:#fff;--surface-alt:#F0FDF4;--border:#16A34A40}
 *{box-sizing:border-box}
 html,body,#root{min-height:100%;margin:0}
-body{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';background:linear-gradient(180deg,#F6FBF8 0%,#fff 60%);color:var(--text)}
+html{background:linear-gradient(180deg,#F6FBF8 0%,#fff 60%)}
+body{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';color:var(--text)}
 .app{max-width:1080px;margin:0 auto;padding:24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 24px rgba(0,0,0,.03)}
 .header{border-radius:16px;padding:16px;color:#fff;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-light) 55%,var(--brand-dark) 100%);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
@@ -20,7 +21,8 @@ input[type="text"]:focus,select:focus,textarea:focus{border-color:var(--brand);b
 .small{font-size:12px;color:var(--text-subtle)}
 .callout{border:1px solid var(--brand); background:var(--surface-alt); padding:10px 12px; border-radius:12px; font-size:13px}
 /* DARK MODE */
-.dark body{background:linear-gradient(180deg,#0B1510 0%,#0E1A14 60%);color:#E6F5EC}
+html.dark{background:linear-gradient(180deg,#0B1510 0%,#0E1A14 60%)}
+.dark body{color:#E6F5EC}
 .dark .card{background:#0F1B15;border-color:#2E5F40}
 .dark label{color:#CFEEDD}
 .dark input[type="text"],.dark select,.dark textarea{background:#0F1B15;color:#F0FFF6;border-color:#2E5F40}
